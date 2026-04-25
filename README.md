@@ -82,6 +82,85 @@ flutter run \
 dart run build_runner watch --delete-conflicting-outputs
 ```
 
+## Сборка APK в CI
+
+Готовый workflow для GitHub Actions (`Build Android APK`) — путь:
+`.github/workflows/android-apk.yml`. Он собирает debug+release APK и
+публикует их как артефакты:
+
+* `cch3r1-messanger-debug-apk` — `app-debug.apk`
+* `cch3r1-messanger-release-apk` — `app-release.apk` (подписан debug-ключом)
+
+Полный YAML:
+
+```yaml
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Build APK (debug + release)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter --version
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: flutter analyze
+      - id: cfg
+        run: |
+          DEFINES=""
+          if [ -n "${{ secrets.SUPABASE_URL }}" ]; then
+            DEFINES="$DEFINES --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}"
+          fi
+          if [ -n "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            DEFINES="$DEFINES --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"
+          fi
+          echo "defines=$DEFINES" >> "$GITHUB_OUTPUT"
+      - run: flutter build apk --debug ${{ steps.cfg.outputs.defines }}
+      - run: flutter build apk --release ${{ steps.cfg.outputs.defines }}
+      - run: |
+          mkdir -p artifacts
+          cp build/app/outputs/flutter-apk/app-debug.apk artifacts/cch3r1-messanger-debug.apk
+          cp build/app/outputs/flutter-apk/app-release.apk artifacts/cch3r1-messanger-release.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cch3r1-messanger-debug-apk
+          path: artifacts/cch3r1-messanger-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cch3r1-messanger-release-apk
+          path: artifacts/cch3r1-messanger-release.apk
+          if-no-files-found: error
+          retention-days: 30
+```
+
+Чтобы переопределить дефолтные `SUPABASE_URL` / `SUPABASE_ANON_KEY` в сборке,
+добавь их в `Settings → Secrets and variables → Actions` репозитория с теми же
+именами — workflow прокинет их через `--dart-define`.
+
+Скачать APK можно в `Actions → Build Android APK → <run> → Artifacts`.
+
 ## Безопасность
 
 * Токены сессии хранятся `supabase_flutter` (secure storage под капотом).
