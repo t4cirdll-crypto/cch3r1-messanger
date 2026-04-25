@@ -10,7 +10,7 @@ class LocalDatabase {
   final Database _db;
   Database get db => _db;
 
-  static const int _version = 3;
+  static const int _version = 4;
   static const String _dbName = 'cchr_messanger.db';
 
   static Future<LocalDatabase> open() async {
@@ -83,6 +83,42 @@ class LocalDatabase {
         // Таблица уже создана.
       }
     }
+    if (oldVersion < 4) {
+      // Phase 2: groups + Saved Messages. Кэш формата 1:1 не совместим
+      // с новой схемой (peer может быть null, появились kind/title/avatar).
+      // Простой и безопасный путь — пересоздать таблицу.
+      try {
+        await db.execute('DROP TABLE IF EXISTS conversations;');
+      } on DatabaseException {
+        // Игнорируем ошибки удаления.
+      }
+      await db.execute('''
+        CREATE TABLE conversations (
+          id TEXT PRIMARY KEY,
+          kind TEXT NOT NULL DEFAULT 'dm',
+          title TEXT,
+          avatar_path TEXT,
+          peer_id TEXT,
+          peer_username TEXT,
+          peer_display_name TEXT,
+          peer_avatar_url TEXT,
+          peer_is_online INTEGER NOT NULL DEFAULT 0,
+          peer_last_seen INTEGER,
+          last_message_id TEXT,
+          last_message_content TEXT,
+          last_message_sender_id TEXT,
+          last_message_is_read INTEGER,
+          last_message_created_at INTEGER,
+          unread_count INTEGER NOT NULL DEFAULT 0,
+          updated_at INTEGER NOT NULL,
+          muted INTEGER NOT NULL DEFAULT 0
+        );
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_conversations_updated '
+        'ON conversations (updated_at DESC);',
+      );
+    }
   }
 
   static Future<void> _onCreate(Database db, int version) async {
@@ -100,9 +136,10 @@ class LocalDatabase {
     await db.execute('''
       CREATE TABLE conversations (
         id TEXT PRIMARY KEY,
-        user1_id TEXT NOT NULL,
-        user2_id TEXT NOT NULL,
-        peer_id TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'dm',
+        title TEXT,
+        avatar_path TEXT,
+        peer_id TEXT,
         peer_username TEXT,
         peer_display_name TEXT,
         peer_avatar_url TEXT,
@@ -114,7 +151,8 @@ class LocalDatabase {
         last_message_is_read INTEGER,
         last_message_created_at INTEGER,
         unread_count INTEGER NOT NULL DEFAULT 0,
-        updated_at INTEGER NOT NULL
+        updated_at INTEGER NOT NULL,
+        muted INTEGER NOT NULL DEFAULT 0
       );
     ''');
     await db.execute('''

@@ -140,12 +140,19 @@ class ChatRemoteDataSource {
     required String conversationId,
     required String currentUserId,
   }) async {
+    // 1) Двусторонний DM: обновляем is_read у входящих сообщений (для
+    //    обратной совместимости — UI всё ещё ориентируется на этот флаг).
     await _client
         .from('messages')
         .update(<String, dynamic>{'is_read': true})
         .eq('conversation_id', conversationId)
         .neq('sender_id', currentUserId)
         .eq('is_read', false);
+    // 2) Универсальный last_read_at в `conversation_members` (для групп).
+    await _client.rpc<void>(
+      'fn_mark_conv_read',
+      params: <String, dynamic>{'p_conv_id': conversationId},
+    );
   }
 
   Future<void> editMessage({
