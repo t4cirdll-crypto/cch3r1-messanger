@@ -173,6 +173,13 @@ class ChatListRepositoryImpl implements ChatListRepository {
       );
 
   @override
+  Future<void> setMute({
+    required String conversationId,
+    required DateTime? until,
+  }) =>
+      remote.setMute(conversationId: conversationId, until: until);
+
+  @override
   Stream<void> watchConversationChanges() => remote.watchChanges(_uid);
 
   // ---------------------------------------------------------------------------

@@ -6,6 +6,7 @@ class ProfileEntity {
     required this.id,
     required this.username,
     this.displayName,
+    this.bio,
     this.avatarUrl,
     this.isOnline = false,
     this.lastSeen,
@@ -15,6 +16,7 @@ class ProfileEntity {
   final String id;
   final String username;
   final String? displayName;
+  final String? bio;
   final String? avatarUrl;
   final bool isOnline;
   final DateTime? lastSeen;
@@ -29,6 +31,7 @@ class ProfileEntity {
     String? id,
     String? username,
     String? displayName,
+    String? bio,
     String? avatarUrl,
     bool? isOnline,
     DateTime? lastSeen,
@@ -38,6 +41,7 @@ class ProfileEntity {
       id: id ?? this.id,
       username: username ?? this.username,
       displayName: displayName ?? this.displayName,
+      bio: bio ?? this.bio,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       isOnline: isOnline ?? this.isOnline,
       lastSeen: lastSeen ?? this.lastSeen,
@@ -52,10 +56,12 @@ class ProfileEntity {
           id == other.id &&
           username == other.username &&
           displayName == other.displayName &&
+          bio == other.bio &&
           avatarUrl == other.avatarUrl &&
           isOnline == other.isOnline &&
           lastSeen == other.lastSeen);
 
   @override
-  int get hashCode => Object.hash(id, username, displayName, avatarUrl, isOnline, lastSeen);
+  int get hashCode =>
+      Object.hash(id, username, displayName, bio, avatarUrl, isOnline, lastSeen);
 }

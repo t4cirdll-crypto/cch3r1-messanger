@@ -92,7 +92,25 @@ class AppStrings {
   // Профиль
   static const String profileTitle = 'Профиль';
   static const String displayNameLabel = 'Отображаемое имя';
+  static const String bioLabel = 'О себе';
+  static const String bioHint = 'Расскажите о себе (до 200 символов)';
   static const String editAvatar = 'Сменить аватарку';
   static const String avatarUpdated = 'Аватарка обновлена';
   static const String profileSaved = 'Профиль сохранён';
+
+  // Настройки
+  static const String settingsTheme = 'Тема оформления';
+  static const String themeSystem = 'Как в системе';
+  static const String themeLight = 'Светлая';
+  static const String themeDark = 'Тёмная';
+  static const String muteTitle = 'Уведомления';
+  static const String muteOn = 'Отключить уведомления';
+  static const String muteOff = 'Включить уведомления';
+  static const String muteFor1Hour = 'На 1 час';
+  static const String muteFor8Hours = 'На 8 часов';
+  static const String muteFor1Day = 'На 24 часа';
+  static const String muteFor1Week = 'На неделю';
+  static const String muteForever = 'Навсегда';
+  static const String muteCleared = 'Уведомления включены';
+  static const String muteSet = 'Уведомления отключены';
 }

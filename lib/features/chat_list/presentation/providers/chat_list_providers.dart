@@ -116,6 +116,16 @@ class ChatListController
     );
     await refresh();
   }
+
+  Future<void> setMute({
+    required String conversationId,
+    required DateTime? until,
+  }) async {
+    final ChatListRepository repo =
+        await ref.read(chatListRepositoryProvider.future);
+    await repo.setMute(conversationId: conversationId, until: until);
+    await refresh();
+  }
 }
 
 final AsyncNotifierProvider<ChatListController, List<ConversationEntity>>

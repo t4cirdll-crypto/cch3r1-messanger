@@ -55,6 +55,12 @@ abstract class ChatListRepository {
     required int seconds,
   });
 
+  /// Mute уведомлений: `until == null` — снять mute.
+  Future<void> setMute({
+    required String conversationId,
+    required DateTime? until,
+  });
+
   /// Стрим изменений `conversations`/`conversation_members`/`messages`.
   Stream<void> watchConversationChanges();
 }

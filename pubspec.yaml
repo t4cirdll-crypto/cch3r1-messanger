@@ -43,6 +43,9 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
+  # Settings / preferences
+  shared_preferences: ^2.3.0
+
   # Attachments
   file_picker: ^8.1.2
   mime: ^1.0.5

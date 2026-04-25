@@ -292,6 +292,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
         actions: <Widget>[
           IconButton(
+            tooltip: liveConv?.muted ?? false
+                ? AppStrings.muteOff
+                : AppStrings.muteOn,
+            icon: Icon(
+              liveConv?.muted ?? false
+                  ? Icons.notifications_off
+                  : Icons.notifications_outlined,
+              color: liveConv?.muted ?? false
+                  ? Theme.of(context).colorScheme.primary
+                  : null,
+            ),
+            onPressed: () => _openMuteSheet(liveConv),
+          ),
+          IconButton(
             tooltip: liveConv?.hasSelfDestruct ?? false
                 ? 'Исчезающие сообщения: '
                     '${_formatTtl((liveConv?.selfDestructSeconds) ?? 0)}'
@@ -468,6 +482,69 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (seconds < 3600) return '${seconds ~/ 60} мин';
     if (seconds < 86400) return '${seconds ~/ 3600} ч';
     return '${seconds ~/ 86400} д';
+  }
+
+  Future<void> _openMuteSheet(ConversationEntity? conv) async {
+    final bool muted = conv?.muted ?? false;
+    final List<({String label, Duration? duration})> options =
+        <({String label, Duration? duration})>[
+      if (muted) (label: AppStrings.muteOff, duration: const Duration()),
+      (label: AppStrings.muteFor1Hour, duration: const Duration(hours: 1)),
+      (label: AppStrings.muteFor8Hours, duration: const Duration(hours: 8)),
+      (label: AppStrings.muteFor1Day, duration: const Duration(days: 1)),
+      (label: AppStrings.muteFor1Week, duration: const Duration(days: 7)),
+      (label: AppStrings.muteForever, duration: null),
+    ];
+    final ({String label, Duration? duration})? picked =
+        await showModalBottomSheet<({String label, Duration? duration})>(
+      context: context,
+      builder: (BuildContext ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                AppStrings.muteTitle,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+            for (final ({String label, Duration? duration}) o in options)
+              ListTile(
+                leading: Icon(
+                  o.duration?.inSeconds == 0
+                      ? Icons.notifications_active_outlined
+                      : Icons.notifications_off_outlined,
+                ),
+                title: Text(o.label),
+                onTap: () => Navigator.of(ctx).pop(o),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null) return;
+    final DateTime? until;
+    if (picked.duration == null) {
+      // Forever — выбираем дату очень далеко в будущее.
+      until = DateTime.utc(9999, 12, 31);
+    } else if (picked.duration!.inSeconds == 0) {
+      // Снять mute.
+      until = null;
+    } else {
+      until = DateTime.now().toUtc().add(picked.duration!);
+    }
+    try {
+      await ref.read(chatListControllerProvider.notifier).setMute(
+            conversationId: widget.conversationId,
+            until: until,
+          );
+      if (mounted) {
+        _toast(until == null ? AppStrings.muteCleared : AppStrings.muteSet);
+      }
+    } catch (e) {
+      if (mounted) _toast('Не удалось: $e');
+    }
   }
 
   Future<void> _openSelfDestructSheet(ConversationEntity? conv) async {

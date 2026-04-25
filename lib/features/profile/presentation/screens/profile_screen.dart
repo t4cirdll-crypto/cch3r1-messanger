@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/providers/app_settings_providers.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../domain/usecases/update_profile.dart';
 import '../providers/profile_providers.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -19,26 +21,32 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final TextEditingController _displayName = TextEditingController();
+  final TextEditingController _bio = TextEditingController();
   bool _saving = false;
   bool _initialized = false;
 
   @override
   void dispose() {
     _displayName.dispose();
+    _bio.dispose();
     super.dispose();
   }
 
   void _hydrate(ProfileEntity p) {
     if (_initialized) return;
     _displayName.text = p.displayName ?? '';
+    _bio.text = p.bio ?? '';
     _initialized = true;
   }
 
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      final useCase = ref.read(updateProfileUseCaseProvider);
-      await useCase.call(_displayName.text);
+      final UpdateProfile useCase = ref.read(updateProfileUseCaseProvider);
+      await useCase.call(UpdateProfileParams(
+        displayName: _displayName.text,
+        bio: _bio.text,
+      ));
       ref.invalidate(authControllerProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -86,10 +94,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     await ref.read(authControllerProvider.notifier).signOut();
   }
 
+  Future<void> _setThemeMode(ThemeMode mode) async {
+    await ref.read(themeModeControllerProvider.notifier).setThemeMode(mode);
+  }
+
   @override
   Widget build(BuildContext context) {
     final AsyncValue<ProfileEntity?> profileState =
         ref.watch(authControllerProvider);
+    final ThemeMode currentTheme = ref
+            .watch(themeModeControllerProvider)
+            .valueOrNull ??
+        ThemeMode.system;
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.profileTitle)),
@@ -149,7 +165,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   prefixIcon: Icon(Icons.badge_outlined),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _bio,
+                minLines: 2,
+                maxLines: 4,
+                maxLength: 200,
+                decoration: const InputDecoration(
+                  labelText: AppStrings.bioLabel,
+                  hintText: AppStrings.bioHint,
+                  prefixIcon: Icon(Icons.info_outline),
+                  alignLabelWithHint: true,
+                ),
+              ),
+              const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: _saving ? null : _save,
                 icon: _saving
@@ -161,7 +190,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     : const Icon(Icons.save_outlined),
                 label: const Text(AppStrings.save),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 32),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  AppStrings.settingsTheme,
+                  style:
+                      TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(height: 4),
+              _ThemeOptionTile(
+                title: AppStrings.themeSystem,
+                icon: Icons.brightness_auto_outlined,
+                selected: currentTheme == ThemeMode.system,
+                onTap: () => _setThemeMode(ThemeMode.system),
+              ),
+              _ThemeOptionTile(
+                title: AppStrings.themeLight,
+                icon: Icons.light_mode_outlined,
+                selected: currentTheme == ThemeMode.light,
+                onTap: () => _setThemeMode(ThemeMode.light),
+              ),
+              _ThemeOptionTile(
+                title: AppStrings.themeDark,
+                icon: Icons.dark_mode_outlined,
+                selected: currentTheme == ThemeMode.dark,
+                onTap: () => _setThemeMode(ThemeMode.dark),
+              ),
+              const SizedBox(height: 24),
               OutlinedButton.icon(
                 onPressed: _saving ? null : _signOut,
                 icon: const Icon(Icons.logout),
@@ -171,6 +228,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+class _ThemeOptionTile extends StatelessWidget {
+  const _ThemeOptionTile({
+    required this.title,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      leading: Icon(icon, color: selected ? cs.primary : null),
+      title: Text(title),
+      trailing: selected
+          ? Icon(Icons.check_circle, color: cs.primary)
+          : Icon(Icons.circle_outlined,
+              color: cs.outline.withValues(alpha: 0.5)),
+      onTap: onTap,
     );
   }
 }

@@ -1,12 +1,16 @@
-import '../../../../core/usecases/usecase.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../repositories/profile_repository.dart';
 
-class UpdateProfile extends UseCase<ProfileEntity, String> {
+class UpdateProfileParams {
+  const UpdateProfileParams({this.displayName, this.bio});
+  final String? displayName;
+  final String? bio;
+}
+
+class UpdateProfile {
   const UpdateProfile(this._repo);
   final ProfileRepository _repo;
 
-  @override
-  Future<ProfileEntity> call(String displayName) =>
-      _repo.updateDisplayName(displayName);
+  Future<ProfileEntity> call(UpdateProfileParams params) =>
+      _repo.updateProfile(displayName: params.displayName, bio: params.bio);
 }
