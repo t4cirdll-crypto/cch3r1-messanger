@@ -3,14 +3,18 @@
 class SupabaseConfig {
   const SupabaseConfig._();
 
+  // Дефолты — публичные значения проекта (безопасно для клиента: RLS включён,
+  // anon-ключ имеет ровно те права, что описаны в политиках).
+  // Их можно переопределить через `--dart-define` при сборке.
   static const String url = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://YOUR-PROJECT.supabase.co',
+    defaultValue: 'https://eorpxscbzetqezctdeqg.supabase.co',
   );
 
   static const String anonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'YOUR-ANON-KEY',
+    defaultValue:
+        'sb_publishable_qJxQoJK1C1HKQYNaiZTRFQ_hALJIPWr',
   );
 
   /// Имя функции, проверяющей свободен ли ник.
