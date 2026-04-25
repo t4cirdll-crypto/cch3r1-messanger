@@ -50,6 +50,9 @@ dependencies:
   http: ^1.2.0
   flutter_local_notifications: ^17.2.0
 
+  # Admin: device fingerprint (Android ID для привязки админки к устройству).
+  device_info_plus: ^10.1.2
+
   # Attachments
   file_picker: ^8.1.2
   mime: ^1.0.5

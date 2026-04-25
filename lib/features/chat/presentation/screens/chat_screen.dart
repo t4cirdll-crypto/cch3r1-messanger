@@ -360,7 +360,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               error: (Object err, StackTrace st) =>
                   Center(child: Text('$err')),
               data: (ChatState data) {
-                if (data.messages.isEmpty) {
+                // Скрываем self-destruct сообщения, у которых истёк срок,
+                // даже если сервер ещё не успел их физически удалить.
+                final List<MessageEntity> visible = data.messages
+                    .where((MessageEntity m) => !m.isExpired)
+                    .toList();
+                if (visible.isEmpty) {
                   return const Center(
                     child: Padding(
                       padding: EdgeInsets.all(24),
@@ -372,20 +377,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   controller: _scrollController,
                   reverse: true,
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount:
-                      data.messages.length + (data.isLoadingMore ? 1 : 0),
+                  itemCount: visible.length + (data.isLoadingMore ? 1 : 0),
                   itemBuilder: (BuildContext _, int index) {
-                    if (data.isLoadingMore &&
-                        index == data.messages.length) {
+                    if (data.isLoadingMore && index == visible.length) {
                       return const Padding(
                         padding: EdgeInsets.all(12),
                         child: Center(child: CircularProgressIndicator()),
                       );
                     }
-                    final int i = data.messages.length - 1 - index;
-                    final MessageEntity m = data.messages[i];
-                    final MessageEntity? prev =
-                        i > 0 ? data.messages[i - 1] : null;
+                    final int i = visible.length - 1 - index;
+                    final MessageEntity m = visible[i];
+                    final MessageEntity? prev = i > 0 ? visible[i - 1] : null;
                     final bool showHeader = prev == null ||
                         !_sameDay(prev.createdAt, m.createdAt);
                     final bool isMine = m.isMine(uid);
