@@ -10,7 +10,7 @@ class LocalDatabase {
   final Database _db;
   Database get db => _db;
 
-  static const int _version = 1;
+  static const int _version = 2;
   static const String _dbName = 'cchr_messanger.db';
 
   static Future<LocalDatabase> open() async {
@@ -20,8 +20,36 @@ class LocalDatabase {
       path,
       version: _version,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
     return LocalDatabase._(db);
+  }
+
+  static Future<void> _onUpgrade(
+    Database db,
+    int oldVersion,
+    int newVersion,
+  ) async {
+    if (oldVersion < 2) {
+      // v2: вложения в сообщениях.
+      const List<String> alters = <String>[
+        'ALTER TABLE messages ADD COLUMN attachment_path TEXT;',
+        'ALTER TABLE messages ADD COLUMN attachment_kind TEXT;',
+        'ALTER TABLE messages ADD COLUMN attachment_name TEXT;',
+        'ALTER TABLE messages ADD COLUMN attachment_mime TEXT;',
+        'ALTER TABLE messages ADD COLUMN attachment_size INTEGER;',
+        'ALTER TABLE messages ADD COLUMN attachment_duration_ms INTEGER;',
+        'ALTER TABLE messages ADD COLUMN attachment_width INTEGER;',
+        'ALTER TABLE messages ADD COLUMN attachment_height INTEGER;',
+      ];
+      for (final String sql in alters) {
+        try {
+          await db.execute(sql);
+        } on DatabaseException {
+          // Колонка уже добавлена — пропускаем.
+        }
+      }
+    }
   }
 
   static Future<void> _onCreate(Database db, int version) async {
@@ -61,9 +89,17 @@ class LocalDatabase {
         id TEXT PRIMARY KEY,
         conversation_id TEXT NOT NULL,
         sender_id TEXT NOT NULL,
-        content TEXT NOT NULL,
+        content TEXT,
         is_read INTEGER NOT NULL DEFAULT 0,
-        created_at INTEGER NOT NULL
+        created_at INTEGER NOT NULL,
+        attachment_path TEXT,
+        attachment_kind TEXT,
+        attachment_name TEXT,
+        attachment_mime TEXT,
+        attachment_size INTEGER,
+        attachment_duration_ms INTEGER,
+        attachment_width INTEGER,
+        attachment_height INTEGER
       );
     ''');
     await db.execute(

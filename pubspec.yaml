@@ -43,6 +43,15 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
+  # Attachments
+  file_picker: ^8.1.2
+  mime: ^1.0.5
+  permission_handler: ^11.3.1
+  record: ^5.1.2
+  just_audio: ^0.9.40
+  video_player: ^2.9.1
+  open_filex: ^4.5.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

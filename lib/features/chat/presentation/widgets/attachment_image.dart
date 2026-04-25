@@ -1,0 +1,105 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../domain/entities/message_entity.dart';
+import '../providers/chat_providers.dart';
+import '../services/attachment_url_cache.dart';
+import 'attachment_url_loader.dart';
+
+/// Картинка-вложение. Обращается к signed URL приватного bucket.
+class AttachmentImage extends ConsumerWidget {
+  const AttachmentImage({
+    super.key,
+    required this.message,
+    required this.maxWidth,
+  });
+
+  final MessageEntity message;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<AttachmentUrlCache> cache =
+        ref.watch(attachmentUrlCacheProvider);
+    return cache.when(
+      loading: () => _placeholder(context),
+      error: (Object e, _) => _error(context),
+      data: (AttachmentUrlCache c) => AttachmentUrlLoader(
+        cache: c,
+        path: message.attachmentPath!,
+        builder: (BuildContext context, String url) =>
+            _image(context, url),
+        loading: _placeholder(context),
+        error: _error(context),
+      ),
+    );
+  }
+
+  Widget _image(BuildContext context, String url) {
+    final double aspect = (message.attachmentWidth != null &&
+            message.attachmentHeight != null &&
+            message.attachmentWidth! > 0 &&
+            message.attachmentHeight! > 0)
+        ? message.attachmentWidth! / message.attachmentHeight!
+        : 1.6;
+
+    return GestureDetector(
+      onTap: () => _openFullscreen(context, url),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: 360),
+        child: AspectRatio(
+          aspectRatio: aspect.clamp(0.6, 2.4),
+          child: CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.cover,
+            placeholder: (BuildContext c, _) => _placeholder(c),
+            errorWidget: (BuildContext c, _, __) => _error(c),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder(BuildContext context) => Container(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        height: 200,
+        width: maxWidth,
+        alignment: Alignment.center,
+        child: const SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+
+  Widget _error(BuildContext context) => Container(
+        color: Theme.of(context).colorScheme.errorContainer,
+        height: 100,
+        width: maxWidth,
+        alignment: Alignment.center,
+        child: const Icon(Icons.broken_image_outlined, size: 32),
+      );
+
+  void _openFullscreen(BuildContext context, String url) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (BuildContext c) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4,
+              child: CachedNetworkImage(imageUrl: url),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
