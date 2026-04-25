@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/providers/supabase_providers.dart';
+import '../../../../core/services/notifications_listener.dart';
 import '../../../../core/utils/date_format.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../chat_list/domain/entities/conversation_entity.dart';
@@ -14,7 +15,9 @@ import '../../domain/entities/message_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../providers/chat_providers.dart';
 import '../services/attachment_picker.dart';
+import '../../data/datasources/giphy_service.dart';
 import '../widgets/attachment_menu_sheet.dart';
+import '../widgets/gif_picker_sheet.dart';
 import '../widgets/message_actions_sheet.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/reply_preview.dart';
@@ -53,6 +56,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _scrollController.addListener(_onScroll);
     _controller.addListener(_onTextChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      ref.read(activeConversationIdProvider.notifier).state =
+          widget.conversationId;
       await ref
           .read(chatControllerProvider(widget.conversationId).notifier)
           .markAsRead();
@@ -82,6 +87,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
+    final StateController<String?> ctrl =
+        ref.read(activeConversationIdProvider.notifier);
+    if (ctrl.state == widget.conversationId) {
+      ctrl.state = null;
+    }
     _scrollController.dispose();
     _controller.dispose();
     super.dispose();
@@ -112,6 +122,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         result = await AttachmentPicker.pickVideo();
       case AttachmentMenuChoice.file:
         result = await AttachmentPicker.pickFile();
+      case AttachmentMenuChoice.gif:
+        if (!mounted) return;
+        final GiphyGif? gif = await showGifPicker(context);
+        if (gif == null || !mounted) return;
+        await _uploadAndSend(OutgoingAttachment(
+          kind: AttachmentKind.gif,
+          mime: 'image/gif',
+          extension: 'gif',
+          remoteUrl: gif.fullUrl,
+          name: gif.title.isEmpty ? 'GIF' : gif.title,
+          width: gif.width,
+          height: gif.height,
+        ));
+        return;
       default:
         return;
     }

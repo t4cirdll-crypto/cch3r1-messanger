@@ -54,6 +54,9 @@ jobs:
           if [ -n "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
             DEFINES="$DEFINES --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"
           fi
+          if [ -n "${{ secrets.GIPHY_API_KEY }}" ]; then
+            DEFINES="$DEFINES --dart-define=GIPHY_API_KEY=${{ secrets.GIPHY_API_KEY }}"
+          fi
           echo "defines=$DEFINES" >> "$GITHUB_OUTPUT"
 
       - name: Build debug APK

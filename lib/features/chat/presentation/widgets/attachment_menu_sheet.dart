@@ -12,6 +12,8 @@ class AttachmentMenuChoice {
       AttachmentMenuChoice._('video');
   static const AttachmentMenuChoice file =
       AttachmentMenuChoice._('file');
+  static const AttachmentMenuChoice gif =
+      AttachmentMenuChoice._('gif');
 }
 
 class AttachmentMenuSheet extends StatelessWidget {
@@ -50,6 +52,12 @@ class AttachmentMenuSheet extends StatelessWidget {
               title: const Text('Видео'),
               onTap: () =>
                   Navigator.of(context).pop(AttachmentMenuChoice.video),
+            ),
+            ListTile(
+              leading: const Icon(Icons.gif_box_outlined),
+              title: const Text('GIF'),
+              onTap: () =>
+                  Navigator.of(context).pop(AttachmentMenuChoice.gif),
             ),
             ListTile(
               leading: const Icon(Icons.attach_file_outlined),

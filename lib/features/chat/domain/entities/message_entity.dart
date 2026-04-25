@@ -5,7 +5,8 @@ enum AttachmentKind {
   image,
   video,
   file,
-  voice;
+  voice,
+  gif;
 
   static AttachmentKind? fromString(String? raw) {
     switch (raw) {
@@ -17,6 +18,8 @@ enum AttachmentKind {
         return AttachmentKind.file;
       case 'voice':
         return AttachmentKind.voice;
+      case 'gif':
+        return AttachmentKind.gif;
       default:
         return null;
     }

@@ -16,8 +16,9 @@ class OutgoingAttachment {
     this.durationMs,
     this.width,
     this.height,
-  })  : assert(bytes != null || file != null,
-            'Нужно передать bytes или file');
+    this.remoteUrl,
+  })  : assert(bytes != null || file != null || remoteUrl != null,
+            'Нужно передать bytes, file или remoteUrl');
 
   final AttachmentKind kind;
   final String mime;
@@ -29,6 +30,10 @@ class OutgoingAttachment {
   final int? durationMs;
   final int? width;
   final int? height;
+
+  /// Если задан — вложение не загружается в Supabase Storage,
+  /// а сохраняется как полный URL (например, GIF c Giphy CDN).
+  final String? remoteUrl;
 }
 
 class ReactionDelta {

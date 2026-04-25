@@ -147,15 +147,21 @@ class ChatRepositoryImpl implements ChatRepository {
   }) async {
     AttachmentUpload? uploaded;
     if (attachment != null) {
-      final String messageId = _uuid.v4();
-      final String storagePath = await remote.uploadAttachment(
-        conversationId: conversationId,
-        messageId: messageId,
-        extension: attachment.extension,
-        mime: attachment.mime,
-        bytes: attachment.bytes,
-        file: attachment.file,
-      );
+      final String storagePath;
+      if (attachment.remoteUrl != null) {
+        // GIF / внешний URL: не грузим в storage, сохраняем как есть.
+        storagePath = attachment.remoteUrl!;
+      } else {
+        final String messageId = _uuid.v4();
+        storagePath = await remote.uploadAttachment(
+          conversationId: conversationId,
+          messageId: messageId,
+          extension: attachment.extension,
+          mime: attachment.mime,
+          bytes: attachment.bytes,
+          file: attachment.file,
+        );
+      }
       uploaded = AttachmentUpload(
         path: storagePath,
         kind: attachment.kind.value,
