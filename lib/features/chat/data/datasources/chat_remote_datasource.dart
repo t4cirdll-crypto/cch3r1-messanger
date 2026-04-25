@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -7,6 +9,8 @@ import '../models/message_model.dart';
 class ChatRemoteDataSource {
   ChatRemoteDataSource(this._client);
   final SupabaseClient _client;
+
+  static const String attachmentsBucket = 'chat-attachments';
 
   Future<List<MessageModel>> getMessages(
     String conversationId, {
@@ -32,18 +36,74 @@ class ChatRemoteDataSource {
   Future<MessageModel> sendMessage({
     required String conversationId,
     required String senderId,
-    required String content,
+    String? content,
+    AttachmentUpload? attachment,
   }) async {
-    final Map<String, dynamic> inserted = await _client
-        .from('messages')
-        .insert(<String, dynamic>{
-          'conversation_id': conversationId,
-          'sender_id': senderId,
-          'content': content,
-        })
-        .select()
-        .single();
+    final Map<String, dynamic> payload = <String, dynamic>{
+      'conversation_id': conversationId,
+      'sender_id': senderId,
+      if ((content ?? '').trim().isNotEmpty) 'content': content!.trim(),
+      if (attachment != null) ...<String, dynamic>{
+        'attachment_path': attachment.path,
+        'attachment_kind': attachment.kind,
+        if (attachment.name != null) 'attachment_name': attachment.name,
+        if (attachment.mime != null) 'attachment_mime': attachment.mime,
+        if (attachment.size != null) 'attachment_size': attachment.size,
+        if (attachment.durationMs != null)
+          'attachment_duration_ms': attachment.durationMs,
+        if (attachment.width != null) 'attachment_width': attachment.width,
+        if (attachment.height != null) 'attachment_height': attachment.height,
+      },
+    };
+
+    final Map<String, dynamic> inserted =
+        await _client.from('messages').insert(payload).select().single();
     return MessageModel.fromJson(inserted);
+  }
+
+  /// Загружает файл во вложение чата. Возвращает storage-путь
+  /// (`{conversationId}/{messageId}.{ext}`), который потом сохраняется в
+  /// `messages.attachment_path`.
+  Future<String> uploadAttachment({
+    required String conversationId,
+    required String messageId,
+    required String extension,
+    required String mime,
+    Uint8List? bytes,
+    File? file,
+  }) async {
+    assert(bytes != null || file != null,
+        'Нужно передать bytes или file для загрузки');
+    final String key =
+        '$conversationId/$messageId${extension.startsWith('.') ? extension : '.$extension'}';
+    final FileOptions options = FileOptions(
+      contentType: mime,
+      upsert: true,
+    );
+    if (bytes != null) {
+      await _client.storage.from(attachmentsBucket).uploadBinary(
+            key,
+            bytes,
+            fileOptions: options,
+          );
+    } else {
+      await _client.storage.from(attachmentsBucket).upload(
+            key,
+            file!,
+            fileOptions: options,
+          );
+    }
+    return key;
+  }
+
+  /// Подписанный URL для приватного bucket. По умолчанию — на час.
+  Future<String> createSignedUrl(
+    String storagePath, {
+    int expiresInSeconds = 3600,
+  }) {
+    return _client.storage
+        .from(attachmentsBucket)
+        .createSignedUrl(storagePath, expiresInSeconds);
   }
 
   Future<void> markAsRead({
@@ -99,4 +159,28 @@ class ChatRemoteDataSource {
 
     return controller.stream;
   }
+}
+
+/// Параметры вложения, которые отправляются вместе с `sendMessage` после
+/// успешной загрузки файла в storage.
+class AttachmentUpload {
+  const AttachmentUpload({
+    required this.path,
+    required this.kind,
+    this.name,
+    this.mime,
+    this.size,
+    this.durationMs,
+    this.width,
+    this.height,
+  });
+
+  final String path; // {conversationId}/{messageId}.{ext}
+  final String kind; // 'image' | 'video' | 'file' | 'voice'
+  final String? name;
+  final String? mime;
+  final int? size;
+  final int? durationMs;
+  final int? width;
+  final int? height;
 }

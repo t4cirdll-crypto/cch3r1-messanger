@@ -17,7 +17,7 @@ class ChatListRemoteDataSource {
     updated_at,
     user1:profiles!conversations_user1_id_fkey(id,username,display_name,avatar_url,is_online,last_seen,created_at),
     user2:profiles!conversations_user2_id_fkey(id,username,display_name,avatar_url,is_online,last_seen,created_at),
-    last_message:messages!conversations_last_message_id_fkey(id,conversation_id,sender_id,content,is_read,created_at)
+    last_message:messages!conversations_last_message_id_fkey(id,conversation_id,sender_id,content,is_read,created_at,attachment_path,attachment_kind,attachment_name,attachment_mime,attachment_size,attachment_duration_ms,attachment_width,attachment_height)
   ''';
 
   Future<List<ConversationModel>> getConversations(String userId) async {

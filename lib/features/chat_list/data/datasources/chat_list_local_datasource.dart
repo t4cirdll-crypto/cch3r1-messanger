@@ -70,7 +70,7 @@ class ChatListLocalDataSource {
         id: row['last_message_id']! as String,
         conversationId: row['id']! as String,
         senderId: row['last_message_sender_id']! as String,
-        content: (row['last_message_content'] as String?) ?? '',
+        content: row['last_message_content'] as String?,
         isRead: ((row['last_message_is_read'] as int?) ?? 0) == 1,
         createdAt: DateTime.fromMillisecondsSinceEpoch(
           row['last_message_created_at']! as int,

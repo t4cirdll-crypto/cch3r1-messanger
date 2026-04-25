@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/utils/date_format.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
+import '../../../chat/domain/entities/message_entity.dart';
 import '../../domain/entities/conversation_entity.dart';
 
 class ConversationTile extends StatelessWidget {
@@ -21,12 +22,12 @@ class ConversationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ProfileEntity peer = conversation.peer;
-    final String? lastContent = conversation.lastMessage?.content;
-    final DateTime time =
-        conversation.lastMessage?.createdAt ?? conversation.updatedAt;
+    final MessageEntity? last = conversation.lastMessage;
+    final String? lastContent = _previewFor(last);
+    final DateTime time = last?.createdAt ?? conversation.updatedAt;
     final bool outgoing = currentUserId != null &&
-        conversation.lastMessage != null &&
-        conversation.lastMessage!.senderId == currentUserId;
+        last != null &&
+        last.senderId == currentUserId;
 
     return ListTile(
       onTap: onTap,
@@ -75,6 +76,24 @@ class ConversationTile extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static String? _previewFor(MessageEntity? m) {
+    if (m == null) return null;
+    final String text = (m.content ?? '').trim();
+    if (text.isNotEmpty) return text;
+    switch (m.attachmentKind) {
+      case AttachmentKind.image:
+        return '📷 Фото';
+      case AttachmentKind.video:
+        return '🎥 Видео';
+      case AttachmentKind.voice:
+        return '🎤 Голосовое сообщение';
+      case AttachmentKind.file:
+        return '📎 ${m.attachmentName ?? 'Файл'}';
+      case null:
+        return null;
+    }
   }
 }
 

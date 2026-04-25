@@ -11,6 +11,7 @@ import '../../domain/usecases/get_messages.dart';
 import '../../domain/usecases/mark_as_read.dart';
 import '../../domain/usecases/observe_messages.dart';
 import '../../domain/usecases/send_message.dart';
+import '../services/attachment_url_cache.dart';
 
 final Provider<ChatRemoteDataSource> chatRemoteDataSourceProvider =
     Provider<ChatRemoteDataSource>(
@@ -51,6 +52,13 @@ final FutureProvider<ObserveMessages> observeMessagesUseCaseProvider =
   (Ref ref) async =>
       ObserveMessages(await ref.watch(chatRepositoryProvider.future)),
 );
+
+/// Кэш signed URL для приватных вложений (TTL ~50 мин).
+final FutureProvider<AttachmentUrlCache> attachmentUrlCacheProvider =
+    FutureProvider<AttachmentUrlCache>((Ref ref) async {
+  final ChatRepository repo = await ref.watch(chatRepositoryProvider.future);
+  return AttachmentUrlCache(repo);
+});
 
 /// Состояние экрана чата.
 class ChatState {
@@ -167,13 +175,27 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
   Future<void> sendMessage(String content) async {
     final String trimmed = content.trim();
     if (trimmed.isEmpty) return;
+    await _send(content: trimmed);
+  }
+
+  Future<void> sendAttachment(OutgoingAttachment attachment, {
+    String? caption,
+  }) async {
+    await _send(content: caption, attachment: attachment);
+  }
+
+  Future<void> _send({String? content, OutgoingAttachment? attachment}) async {
     final ChatState? current = state.valueOrNull;
     if (current == null) return;
     try {
       final SendMessage uc =
           await ref.read(sendMessageUseCaseProvider.future);
       final MessageEntity sent = await uc.call(
-        SendMessageParams(conversationId: arg, content: trimmed),
+        SendMessageParams(
+          conversationId: arg,
+          content: content,
+          attachment: attachment,
+        ),
       );
       // Оптимистично: вставим сразу (Realtime, вероятно, повторит — defensive).
       final List<MessageEntity> next = List<MessageEntity>.of(current.messages);

@@ -9,8 +9,12 @@ import '../../../../core/utils/date_format.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../chat_list/domain/entities/conversation_entity.dart';
 import '../../domain/entities/message_entity.dart';
+import '../../domain/repositories/chat_repository.dart';
 import '../providers/chat_providers.dart';
+import '../services/attachment_picker.dart';
+import '../widgets/attachment_menu_sheet.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/voice_recorder_button.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({
@@ -29,17 +33,31 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _hasText = false;
+  bool _uploading = false;
+  VoiceRecorderState _voiceState = const VoiceRecorderState(
+    isRecording: false,
+    isCancelling: false,
+    elapsed: Duration.zero,
+  );
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    // При открытии чата помечаем чужие сообщения прочитанными.
+    _controller.addListener(_onTextChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await ref
           .read(chatControllerProvider(widget.conversationId).notifier)
           .markAsRead();
     });
+  }
+
+  void _onTextChanged() {
+    final bool nextHasText = _controller.text.trim().isNotEmpty;
+    if (nextHasText != _hasText) {
+      setState(() => _hasText = nextHasText);
+    }
   }
 
   void _onScroll() {
@@ -65,6 +83,55 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     await ref
         .read(chatControllerProvider(widget.conversationId).notifier)
         .sendMessage(text);
+  }
+
+  Future<void> _openAttachmentMenu() async {
+    final AttachmentMenuChoice? choice =
+        await AttachmentMenuSheet.show(context);
+    if (choice == null) return;
+    AttachmentPickerResult result;
+    switch (choice) {
+      case AttachmentMenuChoice.camera:
+        result = await AttachmentPicker.pickImage(fromCamera: true);
+      case AttachmentMenuChoice.gallery:
+        result = await AttachmentPicker.pickImage();
+      case AttachmentMenuChoice.video:
+        result = await AttachmentPicker.pickVideo();
+      case AttachmentMenuChoice.file:
+        result = await AttachmentPicker.pickFile();
+      default:
+        return;
+    }
+    if (!mounted) return;
+    if (result.tooLarge) {
+      _toast('Файл больше 25 МБ — выберите меньший');
+      return;
+    }
+    if (result.attachment == null) return;
+    await _uploadAndSend(result.attachment!);
+  }
+
+  Future<void> _uploadAndSend(OutgoingAttachment attachment) async {
+    final String? caption = _controller.text.trim().isEmpty
+        ? null
+        : _controller.text.trim();
+    setState(() => _uploading = true);
+    try {
+      await ref
+          .read(chatControllerProvider(widget.conversationId).notifier)
+          .sendAttachment(attachment, caption: caption);
+      _controller.clear();
+    } catch (e) {
+      if (mounted) _toast('Не удалось отправить: $e');
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  void _toast(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -145,6 +212,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               },
             ),
           ),
+          if (_uploading)
+            const LinearProgressIndicator(minHeight: 2),
+          VoiceRecorderOverlay(state: _voiceState),
           SafeArea(
             top: false,
             child: Padding(
@@ -152,23 +222,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: <Widget>[
+                  IconButton(
+                    tooltip: 'Прикрепить',
+                    onPressed: _voiceState.isRecording || _uploading
+                        ? null
+                        : _openAttachmentMenu,
+                    icon: const Icon(Icons.attach_file_outlined),
+                  ),
                   Expanded(
                     child: TextField(
                       controller: _controller,
                       minLines: 1,
                       maxLines: 5,
+                      enabled: !_voiceState.isRecording,
                       textInputAction: TextInputAction.newline,
                       decoration: const InputDecoration(
                         hintText: AppStrings.messageHint,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    tooltip: AppStrings.messageSend,
-                    onPressed: _send,
-                    icon: const Icon(Icons.send_rounded),
-                  ),
+                  const SizedBox(width: 4),
+                  if (_hasText)
+                    IconButton.filled(
+                      tooltip: AppStrings.messageSend,
+                      onPressed: _uploading ? null : _send,
+                      icon: const Icon(Icons.send_rounded),
+                    )
+                  else
+                    VoiceRecorderButton(
+                      onStateChanged: (VoiceRecorderState s) {
+                        if (mounted) setState(() => _voiceState = s);
+                      },
+                      onError: _toast,
+                      onRecorded: _uploadAndSend,
+                    ),
                 ],
               ),
             ),
