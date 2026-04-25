@@ -21,7 +21,7 @@ class OutgoingAttachment {
 
   final AttachmentKind kind;
   final String mime;
-  final String extension; // без точки, напр. 'jpg', 'mp4'
+  final String extension;
   final Uint8List? bytes;
   final File? file;
   final String? name;
@@ -31,9 +31,20 @@ class OutgoingAttachment {
   final int? height;
 }
 
+class ReactionDelta {
+  const ReactionDelta({
+    required this.messageId,
+    required this.userId,
+    required this.emoji,
+    required this.added,
+  });
+  final String messageId;
+  final String userId;
+  final String emoji;
+  final bool added;
+}
+
 abstract class ChatRepository {
-  /// Последние [limit] сообщений диалога. Если [before] != null — возвращает
-  /// страницу более старых сообщений.
   Future<List<MessageEntity>> getMessages(
     String conversationId, {
     int limit = 30,
@@ -44,7 +55,36 @@ abstract class ChatRepository {
     required String conversationId,
     String? content,
     OutgoingAttachment? attachment,
+    String? replyToId,
+    String? forwardedFromMessageId,
+    String? forwardedFromSenderId,
   });
+
+  Future<void> editMessage({
+    required String messageId,
+    required String content,
+  });
+
+  /// Удаление «для всех»: только отправитель. Очищает контент/вложение и
+  /// помечает `deleted_at`.
+  Future<void> deleteForAll(String messageId);
+
+  /// Удаление «для меня»: локально удаляем из кэша.
+  Future<void> deleteForMe(String messageId);
+
+  Future<void> setPin({required String messageId, required bool pinned});
+
+  Future<void> toggleReaction({
+    required String messageId,
+    required String emoji,
+  });
+
+  Future<List<MessageEntity>> searchInConversation({
+    required String conversationId,
+    required String query,
+  });
+
+  Future<List<MessageEntity>> getPinnedMessages(String conversationId);
 
   /// Возвращает короткоживущий signed URL для приватного вложения.
   Future<String> getAttachmentSignedUrl(String storagePath);
@@ -54,4 +94,7 @@ abstract class ChatRepository {
 
   /// Стрим новых/обновлённых сообщений конкретного диалога.
   Stream<MessageEntity> watchMessages(String conversationId);
+
+  /// Стрим изменений реакций (фильтр по диалогу делает клиент по message_id).
+  Stream<ReactionDelta> watchReactions();
 }

@@ -7,10 +7,16 @@ class SendMessageParams {
     required this.conversationId,
     this.content,
     this.attachment,
+    this.replyToId,
+    this.forwardedFromMessageId,
+    this.forwardedFromSenderId,
   });
   final String conversationId;
   final String? content;
   final OutgoingAttachment? attachment;
+  final String? replyToId;
+  final String? forwardedFromMessageId;
+  final String? forwardedFromSenderId;
 }
 
 class SendMessage extends UseCase<MessageEntity, SendMessageParams> {
@@ -23,6 +29,9 @@ class SendMessage extends UseCase<MessageEntity, SendMessageParams> {
       conversationId: params.conversationId,
       content: params.content,
       attachment: params.attachment,
+      replyToId: params.replyToId,
+      forwardedFromMessageId: params.forwardedFromMessageId,
+      forwardedFromSenderId: params.forwardedFromSenderId,
     );
   }
 }

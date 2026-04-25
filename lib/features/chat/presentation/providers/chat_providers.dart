@@ -100,19 +100,23 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
 
   @override
   Future<ChatState> build(String conversationId) async {
-    // Realtime-подписка живёт, пока существует провайдер.
     final ObserveMessages observe =
         await ref.watch(observeMessagesUseCaseProvider.future);
     final stream = observe.call(conversationId);
     final sub = stream.listen(_onIncoming);
     ref.onDispose(sub.cancel);
 
+    final ChatRepository repo =
+        await ref.watch(chatRepositoryProvider.future);
+    final reactionSub =
+        repo.watchReactions().listen(_onReactionDelta);
+    ref.onDispose(reactionSub.cancel);
+
     final GetMessages uc =
         await ref.watch(getMessagesUseCaseProvider.future);
     final List<MessageEntity> page = await uc.call(
       GetMessagesParams(conversationId: conversationId, limit: _pageSize),
     );
-    // Сервер возвращает DESC, мы храним ASC.
     final List<MessageEntity> sorted = page.reversed.toList();
     return ChatState(
       messages: sorted,
@@ -128,13 +132,65 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
       (MessageEntity m) => m.id == message.id,
     );
     if (existing >= 0) {
-      next[existing] = message;
+      // Сохраняем уже агрегированные реакции локально, если сервер их не
+      // прислал (Realtime payload реакций не содержит).
+      final List<ReactionEntity> keep = message.reactions.isEmpty
+          ? next[existing].reactions
+          : message.reactions;
+      next[existing] = message.copyWith(reactions: keep);
     } else {
       next.add(message);
       next.sort((MessageEntity a, MessageEntity b) =>
           a.createdAt.compareTo(b.createdAt));
     }
     state = AsyncData<ChatState>(current.copyWith(messages: next));
+  }
+
+  void _onReactionDelta(ReactionDelta delta) {
+    final ChatState? current = state.valueOrNull;
+    if (current == null) return;
+    final int idx = current.messages.indexWhere(
+      (MessageEntity m) => m.id == delta.messageId,
+    );
+    if (idx < 0) return;
+    final MessageEntity msg = current.messages[idx];
+    final List<ReactionEntity> updated = _applyDelta(msg.reactions, delta);
+    final List<MessageEntity> next = List<MessageEntity>.of(current.messages);
+    next[idx] = msg.copyWith(reactions: updated);
+    state = AsyncData<ChatState>(current.copyWith(messages: next));
+  }
+
+  static List<ReactionEntity> _applyDelta(
+    List<ReactionEntity> current,
+    ReactionDelta delta,
+  ) {
+    final List<ReactionEntity> out =
+        List<ReactionEntity>.of(current.map((ReactionEntity r) =>
+            ReactionEntity(emoji: r.emoji, userIds: List<String>.of(r.userIds))));
+    final int i = out.indexWhere((ReactionEntity r) => r.emoji == delta.emoji);
+    if (delta.added) {
+      if (i >= 0) {
+        if (!out[i].userIds.contains(delta.userId)) {
+          out[i].userIds.add(delta.userId);
+        }
+      } else {
+        out.add(ReactionEntity(
+          emoji: delta.emoji,
+          userIds: <String>[delta.userId],
+        ));
+      }
+    } else {
+      if (i >= 0) {
+        out[i].userIds.remove(delta.userId);
+        if (out[i].userIds.isEmpty) out.removeAt(i);
+      }
+    }
+    out.sort((ReactionEntity a, ReactionEntity b) {
+      final int c = b.count.compareTo(a.count);
+      if (c != 0) return c;
+      return a.emoji.compareTo(b.emoji);
+    });
+    return out;
   }
 
   Future<void> loadMore() async {
@@ -172,19 +228,34 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
     }
   }
 
-  Future<void> sendMessage(String content) async {
+  Future<void> sendMessage(
+    String content, {
+    String? replyToId,
+  }) async {
     final String trimmed = content.trim();
     if (trimmed.isEmpty) return;
-    await _send(content: trimmed);
+    await _send(content: trimmed, replyToId: replyToId);
   }
 
-  Future<void> sendAttachment(OutgoingAttachment attachment, {
+  Future<void> sendAttachment(
+    OutgoingAttachment attachment, {
     String? caption,
+    String? replyToId,
   }) async {
-    await _send(content: caption, attachment: attachment);
+    await _send(
+      content: caption,
+      attachment: attachment,
+      replyToId: replyToId,
+    );
   }
 
-  Future<void> _send({String? content, OutgoingAttachment? attachment}) async {
+  Future<void> _send({
+    String? content,
+    OutgoingAttachment? attachment,
+    String? replyToId,
+    String? forwardedFromMessageId,
+    String? forwardedFromSenderId,
+  }) async {
     final ChatState? current = state.valueOrNull;
     if (current == null) return;
     try {
@@ -195,9 +266,11 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
           conversationId: arg,
           content: content,
           attachment: attachment,
+          replyToId: replyToId,
+          forwardedFromMessageId: forwardedFromMessageId,
+          forwardedFromSenderId: forwardedFromSenderId,
         ),
       );
-      // Оптимистично: вставим сразу (Realtime, вероятно, повторит — defensive).
       final List<MessageEntity> next = List<MessageEntity>.of(current.messages);
       if (next.every((MessageEntity m) => m.id != sent.id)) {
         next.add(sent);
@@ -206,6 +279,100 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
     } catch (e) {
       state = AsyncData<ChatState>(current.copyWith(error: e));
     }
+  }
+
+  Future<void> editMessage(String messageId, String newContent) async {
+    final ChatState? current = state.valueOrNull;
+    if (current == null) return;
+    final ChatRepository repo =
+        await ref.read(chatRepositoryProvider.future);
+    await repo.editMessage(messageId: messageId, content: newContent);
+    final int i = current.messages.indexWhere(
+      (MessageEntity m) => m.id == messageId,
+    );
+    if (i < 0) return;
+    final List<MessageEntity> next = List<MessageEntity>.of(current.messages);
+    next[i] = next[i].copyWith(
+      content: newContent.trim(),
+      editedAt: DateTime.now(),
+    );
+    state = AsyncData<ChatState>(current.copyWith(messages: next));
+  }
+
+  Future<void> deleteMessage(String messageId,
+      {required bool forAll}) async {
+    final ChatState? current = state.valueOrNull;
+    if (current == null) return;
+    final ChatRepository repo =
+        await ref.read(chatRepositoryProvider.future);
+    if (forAll) {
+      await repo.deleteForAll(messageId);
+      final int i = current.messages.indexWhere(
+        (MessageEntity m) => m.id == messageId,
+      );
+      if (i < 0) return;
+      final List<MessageEntity> next = List<MessageEntity>.of(current.messages);
+      next[i] = next[i].copyWith(
+        content: null,
+        deletedAt: DateTime.now(),
+        clearEditedAt: true,
+        clearAttachment: true,
+        reactions: const <ReactionEntity>[],
+      );
+      state = AsyncData<ChatState>(current.copyWith(messages: next));
+    } else {
+      await repo.deleteForMe(messageId);
+      final List<MessageEntity> next = current.messages
+          .where((MessageEntity m) => m.id != messageId)
+          .toList();
+      state = AsyncData<ChatState>(current.copyWith(messages: next));
+    }
+  }
+
+  Future<void> togglePin(String messageId) async {
+    final ChatState? current = state.valueOrNull;
+    if (current == null) return;
+    final int i = current.messages.indexWhere(
+      (MessageEntity m) => m.id == messageId,
+    );
+    if (i < 0) return;
+    final bool nextPinned = !current.messages[i].isPinned;
+    final ChatRepository repo =
+        await ref.read(chatRepositoryProvider.future);
+    await repo.setPin(messageId: messageId, pinned: nextPinned);
+    final List<MessageEntity> next = List<MessageEntity>.of(current.messages);
+    next[i] = next[i].copyWith(
+      pinnedAt: nextPinned ? DateTime.now() : null,
+      clearPinnedAt: !nextPinned,
+    );
+    state = AsyncData<ChatState>(current.copyWith(messages: next));
+  }
+
+  Future<void> toggleReaction(String messageId, String emoji) async {
+    final ChatRepository repo =
+        await ref.read(chatRepositoryProvider.future);
+    await repo.toggleReaction(messageId: messageId, emoji: emoji);
+  }
+
+  Future<void> forwardMessageToConversation({
+    required MessageEntity message,
+    required String targetConversationId,
+  }) async {
+    final SendMessage uc =
+        await ref.read(sendMessageUseCaseProvider.future);
+    OutgoingAttachment? attachment; // переслать вложение нельзя без re-upload —
+    // в рамках Phase 1 пересылаем только текст; вложение помечаем в content.
+    String? content = message.content;
+    if (message.hasAttachment && (content == null || content.isEmpty)) {
+      content = '[вложение: ${message.attachmentKind?.value ?? 'файл'}]';
+    }
+    await uc.call(SendMessageParams(
+      conversationId: targetConversationId,
+      content: content,
+      attachment: attachment,
+      forwardedFromMessageId: message.id,
+      forwardedFromSenderId: message.senderId,
+    ));
   }
 
   Future<void> markAsRead() async {

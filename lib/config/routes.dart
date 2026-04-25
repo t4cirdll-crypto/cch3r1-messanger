@@ -10,6 +10,8 @@ import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
 import '../features/chat/presentation/screens/chat_screen.dart';
+import '../features/chat/presentation/screens/forward_picker_screen.dart';
+import '../features/chat/presentation/screens/in_chat_search_screen.dart';
 import '../features/chat_list/domain/entities/conversation_entity.dart';
 import '../features/chat_list/presentation/screens/chat_list_screen.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
@@ -77,6 +79,19 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
                   : null;
           return ChatScreen(conversationId: id, conversation: conv);
         },
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'search',
+            builder: (BuildContext _, GoRouterState state) {
+              final String id = state.pathParameters['id']!;
+              return InChatSearchScreen(conversationId: id);
+            },
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/forward-picker',
+        builder: (_, __) => const ForwardPickerScreen(),
       ),
     ],
     errorBuilder: (BuildContext _, GoRouterState state) => Scaffold(
