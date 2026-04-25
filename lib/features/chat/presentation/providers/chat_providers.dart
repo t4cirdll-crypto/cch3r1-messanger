@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/db/local_database.dart';
 import '../../../../core/providers/supabase_providers.dart';
 import '../../data/datasources/chat_local_datasource.dart';
 import '../../data/datasources/chat_remote_datasource.dart';
 import '../../data/repositories/chat_repository_impl.dart';
+import '../../data/services/typing_service.dart';
 import '../../domain/entities/message_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/usecases/get_messages.dart';
@@ -59,6 +61,33 @@ final FutureProvider<AttachmentUrlCache> attachmentUrlCacheProvider =
   final ChatRepository repo = await ref.watch(chatRepositoryProvider.future);
   return AttachmentUrlCache(repo);
 });
+
+/// Канал «печатает…» для текущего диалога.
+final AutoDisposeProviderFamily<TypingChannel, String> typingChannelProvider =
+    Provider.autoDispose.family<TypingChannel, String>(
+  (Ref ref, String conversationId) {
+    final SupabaseClient client = ref.watch(supabaseClientProvider);
+    final String selfUid = client.auth.currentUser?.id ?? '';
+    final TypingChannel ch = TypingChannel(
+      client: client,
+      conversationId: conversationId,
+      selfUserId: selfUid,
+    )..connect();
+    ref.onDispose(() {
+      // ignore: discarded_futures
+      ch.dispose();
+    });
+    return ch;
+  },
+);
+
+/// Поток множества userId, которые сейчас печатают в указанном диалоге.
+final AutoDisposeStreamProviderFamily<Set<String>, String>
+    typingUsersProvider =
+    StreamProvider.autoDispose.family<Set<String>, String>(
+  (Ref ref, String conversationId) =>
+      ref.watch(typingChannelProvider(conversationId)).typingUsers,
+);
 
 /// Состояние экрана чата.
 class ChatState {

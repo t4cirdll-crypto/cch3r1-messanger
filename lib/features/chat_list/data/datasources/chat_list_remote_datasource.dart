@@ -24,7 +24,8 @@ class ChatListRemoteDataSource {
     updated_at,
     user1_id,
     user2_id,
-    last_message:messages!conversations_last_message_id_fkey(id,conversation_id,sender_id,content,is_read,created_at,edited_at,deleted_at,reply_to_id,forwarded_from_message_id,forwarded_from_sender_id,pinned_at,attachment_path,attachment_kind,attachment_name,attachment_mime,attachment_size,attachment_duration_ms,attachment_width,attachment_height)
+    self_destruct_seconds,
+    last_message:messages!conversations_last_message_id_fkey(id,conversation_id,sender_id,content,is_read,created_at,edited_at,deleted_at,reply_to_id,forwarded_from_message_id,forwarded_from_sender_id,pinned_at,attachment_path,attachment_kind,attachment_name,attachment_mime,attachment_size,attachment_duration_ms,attachment_width,attachment_height,expires_at)
   ''';
 
   /// Возвращает идентификаторы диалогов, в которых пользователь — участник.
@@ -238,6 +239,15 @@ class ChatListRemoteDataSource {
   Future<void> markRead(String conversationId) =>
       _client.rpc<void>('fn_mark_conv_read', params: <String, dynamic>{
         'p_conv_id': conversationId,
+      });
+
+  Future<void> setSelfDestruct({
+    required String conversationId,
+    required int seconds,
+  }) =>
+      _client.rpc<void>('fn_set_self_destruct', params: <String, dynamic>{
+        'p_conv_id': conversationId,
+        'p_seconds': seconds,
       });
 
   /// Любое изменение, касающееся диалогов — рефетч списка.

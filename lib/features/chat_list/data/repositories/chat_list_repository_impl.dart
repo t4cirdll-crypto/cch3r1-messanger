@@ -163,6 +163,16 @@ class ChatListRepositoryImpl implements ChatListRepository {
       remote.markRead(conversationId);
 
   @override
+  Future<void> setSelfDestruct({
+    required String conversationId,
+    required int seconds,
+  }) =>
+      remote.setSelfDestruct(
+        conversationId: conversationId,
+        seconds: seconds,
+      );
+
+  @override
   Stream<void> watchConversationChanges() => remote.watchChanges(_uid);
 
   // ---------------------------------------------------------------------------
@@ -222,6 +232,7 @@ class ChatListRepositoryImpl implements ChatListRepository {
       lastMessage: c.lastMessage?.toEntity(),
       unreadCount: unread,
       muted: muted,
+      selfDestructSeconds: c.selfDestructSeconds,
     );
   }
 }

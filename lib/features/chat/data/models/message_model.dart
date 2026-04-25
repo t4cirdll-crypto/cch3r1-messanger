@@ -30,6 +30,7 @@ class MessageModel with _$MessageModel {
     @JsonKey(name: 'attachment_duration_ms') int? attachmentDurationMs,
     @JsonKey(name: 'attachment_width') int? attachmentWidth,
     @JsonKey(name: 'attachment_height') int? attachmentHeight,
+    @JsonKey(name: 'expires_at') DateTime? expiresAt,
   }) = _MessageModel;
 
   factory MessageModel.fromJson(Map<String, dynamic> json) =>
@@ -57,6 +58,7 @@ class MessageModel with _$MessageModel {
         attachmentDurationMs: (row['attachment_duration_ms'] as num?)?.toInt(),
         attachmentWidth: (row['attachment_width'] as num?)?.toInt(),
         attachmentHeight: (row['attachment_height'] as num?)?.toInt(),
+        expiresAt: _epochToDate(row['expires_at']),
       );
 
   Map<String, Object?> toDb() => <String, Object?>{
@@ -80,6 +82,7 @@ class MessageModel with _$MessageModel {
         'attachment_duration_ms': attachmentDurationMs,
         'attachment_width': attachmentWidth,
         'attachment_height': attachmentHeight,
+        'expires_at': expiresAt?.millisecondsSinceEpoch,
       };
 
   MessageEntity toEntity({
@@ -109,6 +112,7 @@ class MessageModel with _$MessageModel {
         attachmentDurationMs: attachmentDurationMs,
         attachmentWidth: attachmentWidth,
         attachmentHeight: attachmentHeight,
+        expiresAt: expiresAt,
       );
 
   static DateTime? _epochToDate(Object? raw) {

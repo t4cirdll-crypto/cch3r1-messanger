@@ -9,6 +9,7 @@ import '../../../../core/providers/supabase_providers.dart';
 import '../../../../core/utils/date_format.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../chat_list/domain/entities/conversation_entity.dart';
+import '../../../chat_list/presentation/providers/chat_list_providers.dart';
 import '../../domain/entities/message_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../providers/chat_providers.dart';
@@ -62,6 +63,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final bool nextHasText = _controller.text.trim().isNotEmpty;
     if (nextHasText != _hasText) {
       setState(() => _hasText = nextHasText);
+    }
+    if (nextHasText) {
+      // Внутри уже есть throttle (~2 sec).
+      // ignore: discarded_futures
+      ref.read(typingChannelProvider(widget.conversationId)).ping();
     }
   }
 
@@ -275,15 +281,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final AsyncValue<ChatState> state =
         ref.watch(chatControllerProvider(widget.conversationId));
     final String? uid = ref.watch(currentUserIdProvider);
+    final ConversationEntity? liveConv = _liveConversation(ref);
 
     return Scaffold(
       appBar: AppBar(
-        title: _buildTitle(context),
+        title: _buildTitle(context, liveConv),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
         actions: <Widget>[
+          IconButton(
+            tooltip: liveConv?.hasSelfDestruct ?? false
+                ? 'Исчезающие сообщения: '
+                    '${_formatTtl((liveConv?.selfDestructSeconds) ?? 0)}'
+                : 'Исчезающие сообщения',
+            icon: Icon(
+              liveConv?.hasSelfDestruct ?? false
+                  ? Icons.timer
+                  : Icons.timer_outlined,
+              color: liveConv?.hasSelfDestruct ?? false
+                  ? Theme.of(context).colorScheme.primary
+                  : null,
+            ),
+            onPressed: () => _openSelfDestructSheet(liveConv),
+          ),
           IconButton(
             tooltip: AppStrings.searchInChat,
             icon: const Icon(Icons.search),
@@ -426,11 +448,106 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  Widget _buildTitle(BuildContext context) {
-    final ConversationEntity? conv = widget.conversation;
+  /// Возвращает свежие данные о диалоге из chatListController, если есть;
+  /// иначе fallback на переданный в виджет `conversation`.
+  ConversationEntity? _liveConversation(WidgetRef ref) {
+    final AsyncValue<List<ConversationEntity>> all =
+        ref.watch(chatListControllerProvider);
+    final List<ConversationEntity>? list = all.valueOrNull;
+    if (list != null) {
+      for (final ConversationEntity c in list) {
+        if (c.id == widget.conversationId) return c;
+      }
+    }
+    return widget.conversation;
+  }
+
+  static String _formatTtl(int seconds) {
+    if (seconds <= 0) return 'выкл';
+    if (seconds < 60) return '$seconds сек';
+    if (seconds < 3600) return '${seconds ~/ 60} мин';
+    if (seconds < 86400) return '${seconds ~/ 3600} ч';
+    return '${seconds ~/ 86400} д';
+  }
+
+  Future<void> _openSelfDestructSheet(ConversationEntity? conv) async {
+    final int current = conv?.selfDestructSeconds ?? 0;
+    final List<({String label, int seconds})> options =
+        <({String label, int seconds})>[
+      (label: 'Выключить', seconds: 0),
+      (label: '5 секунд', seconds: 5),
+      (label: '30 секунд', seconds: 30),
+      (label: '1 минута', seconds: 60),
+      (label: '5 минут', seconds: 300),
+      (label: '1 час', seconds: 3600),
+      (label: '24 часа', seconds: 86400),
+    ];
+    final int? picked = await showModalBottomSheet<int>(
+      context: context,
+      builder: (BuildContext ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'Исчезающие сообщения',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Новые сообщения автоматически удалятся у всех участников '
+                'через выбранное время.',
+                style: TextStyle(fontSize: 13),
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (final ({String label, int seconds}) o in options)
+              ListTile(
+                leading: Icon(
+                  o.seconds == current
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: o.seconds == current
+                      ? Theme.of(ctx).colorScheme.primary
+                      : null,
+                ),
+                title: Text(o.label),
+                onTap: () => Navigator.of(ctx).pop(o.seconds),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || picked == current) return;
+    try {
+      await ref
+          .read(chatListControllerProvider.notifier)
+          .setSelfDestruct(
+            conversationId: widget.conversationId,
+            seconds: picked,
+          );
+      if (mounted) {
+        _toast(picked == 0
+            ? 'Исчезающие сообщения выключены'
+            : 'Сообщения будут исчезать через ${_formatTtl(picked)}');
+      }
+    } catch (e) {
+      if (mounted) _toast('Не удалось: $e');
+    }
+  }
+
+  Widget _buildTitle(BuildContext context, ConversationEntity? convArg) {
+    final ConversationEntity? conv = convArg ?? widget.conversation;
     if (conv == null) {
       return const Text('Чат');
     }
+
+    final AsyncValue<Set<String>> typingAsync =
+        ref.watch(typingUsersProvider(widget.conversationId));
+    final Set<String> typing = typingAsync.valueOrNull ?? const <String>{};
 
     if (conv.isSaved) {
       return Row(
@@ -487,11 +604,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ),
                   ),
                   Text(
-                    '$count участник(ов)',
+                    typing.isNotEmpty
+                        ? (typing.length == 1
+                            ? 'печатает…'
+                            : '${typing.length} печатают…')
+                        : '$count участник(ов)',
                     style: TextStyle(
                       fontSize: 12,
-                      color:
-                          Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontStyle: typing.isNotEmpty
+                          ? FontStyle.italic
+                          : FontStyle.normal,
+                      color: typing.isNotEmpty
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -534,18 +661,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
               ),
               Text(
-                peer.isOnline
-                    ? AppStrings.online
-                    : peer.lastSeen == null
-                        ? ''
-                        : AppStrings.lastSeen(
-                            DateFormatter.lastSeenAgo(peer.lastSeen!),
-                          ),
+                typing.contains(peer.id)
+                    ? 'печатает…'
+                    : peer.isOnline
+                        ? AppStrings.online
+                        : peer.lastSeen == null
+                            ? ''
+                            : AppStrings.lastSeen(
+                                DateFormatter.lastSeenAgo(peer.lastSeen!),
+                              ),
                 style: TextStyle(
                   fontSize: 12,
-                  color: peer.isOnline
-                      ? Colors.green
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontStyle: typing.contains(peer.id)
+                      ? FontStyle.italic
+                      : FontStyle.normal,
+                  color: typing.contains(peer.id)
+                      ? Theme.of(context).colorScheme.primary
+                      : peer.isOnline
+                          ? Colors.green
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
