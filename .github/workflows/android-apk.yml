@@ -1,0 +1,88 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Build APK (debug + release)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Code generation (freezed / json / riverpod)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Resolve Supabase config (use secrets if set, else compiled defaults)
+        id: cfg
+        run: |
+          DEFINES=""
+          if [ -n "${{ secrets.SUPABASE_URL }}" ]; then
+            DEFINES="$DEFINES --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}"
+          fi
+          if [ -n "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            DEFINES="$DEFINES --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"
+          fi
+          echo "defines=$DEFINES" >> "$GITHUB_OUTPUT"
+
+      - name: Build debug APK
+        run: flutter build apk --debug ${{ steps.cfg.outputs.defines }}
+
+      - name: Build release APK
+        run: flutter build apk --release ${{ steps.cfg.outputs.defines }}
+
+      - name: Rename artifacts
+        run: |
+          mkdir -p artifacts
+          cp build/app/outputs/flutter-apk/app-debug.apk \
+             artifacts/cch3r1-messanger-debug.apk
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             artifacts/cch3r1-messanger-release.apk
+          ls -lh artifacts
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cch3r1-messanger-debug-apk
+          path: artifacts/cch3r1-messanger-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cch3r1-messanger-release-apk
+          path: artifacts/cch3r1-messanger-release.apk
+          if-no-files-found: error
+          retention-days: 30
