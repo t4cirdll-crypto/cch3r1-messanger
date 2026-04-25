@@ -103,6 +103,19 @@ class ChatListController
         await ref.read(chatListRepositoryProvider.future);
     await repo.markRead(conversationId);
   }
+
+  Future<void> setSelfDestruct({
+    required String conversationId,
+    required int seconds,
+  }) async {
+    final ChatListRepository repo =
+        await ref.read(chatListRepositoryProvider.future);
+    await repo.setSelfDestruct(
+      conversationId: conversationId,
+      seconds: seconds,
+    );
+    await refresh();
+  }
 }
 
 final AsyncNotifierProvider<ChatListController, List<ConversationEntity>>

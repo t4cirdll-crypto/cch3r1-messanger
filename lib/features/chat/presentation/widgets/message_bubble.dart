@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_strings.dart';
@@ -168,6 +170,14 @@ class MessageBubble extends StatelessWidget {
                               style: theme.textTheme.bodySmall
                                   ?.copyWith(color: fg.withValues(alpha: 0.75)),
                             ),
+                            if (message.expiresAt != null &&
+                                !message.isDeleted) ...<Widget>[
+                              const SizedBox(width: 4),
+                              _ExpiryBadge(
+                                expiresAt: message.expiresAt!,
+                                color: fg,
+                              ),
+                            ],
                             if (isMine && showRead && !message.isDeleted) ...<Widget>[
                               const SizedBox(width: 4),
                               Icon(
@@ -299,6 +309,64 @@ class _ReactionChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Бейдж с обратным отсчётом для self-destruct сообщений.
+class _ExpiryBadge extends StatefulWidget {
+  const _ExpiryBadge({required this.expiresAt, required this.color});
+
+  final DateTime expiresAt;
+  final Color color;
+
+  @override
+  State<_ExpiryBadge> createState() => _ExpiryBadgeState();
+}
+
+class _ExpiryBadgeState extends State<_ExpiryBadge> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (Timer _) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _format(Duration d) {
+    if (d.isNegative || d == Duration.zero) return '0с';
+    if (d.inSeconds < 60) return '${d.inSeconds}с';
+    if (d.inMinutes < 60) return '${d.inMinutes}м';
+    if (d.inHours < 24) return '${d.inHours}ч';
+    return '${d.inDays}д';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Duration left = widget.expiresAt.difference(DateTime.now());
+    final TextStyle? base = Theme.of(context).textTheme.bodySmall;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Icon(
+          Icons.timer_outlined,
+          size: 14,
+          color: widget.color.withValues(alpha: 0.75),
+        ),
+        const SizedBox(width: 2),
+        Text(
+          _format(left),
+          style: base?.copyWith(color: widget.color.withValues(alpha: 0.75)),
+        ),
+      ],
     );
   }
 }

@@ -89,6 +89,7 @@ class ConversationEntity {
     this.lastMessage,
     this.unreadCount = 0,
     this.muted = false,
+    this.selfDestructSeconds = 0,
   });
 
   final String id;
@@ -103,6 +104,12 @@ class ConversationEntity {
   final MessageEntity? lastMessage;
   final int unreadCount;
   final bool muted;
+
+  /// TTL исчезающих сообщений для этого чата в секундах.
+  /// 0 или null — выключено.
+  final int selfDestructSeconds;
+
+  bool get hasSelfDestruct => selfDestructSeconds > 0;
 
   bool get isDm => kind == ConversationKind.dm;
   bool get isGroup => kind == ConversationKind.group;
@@ -134,6 +141,7 @@ class ConversationEntity {
     MessageEntity? lastMessage,
     int? unreadCount,
     bool? muted,
+    int? selfDestructSeconds,
   }) {
     return ConversationEntity(
       id: id ?? this.id,
@@ -146,6 +154,7 @@ class ConversationEntity {
       lastMessage: lastMessage ?? this.lastMessage,
       unreadCount: unreadCount ?? this.unreadCount,
       muted: muted ?? this.muted,
+      selfDestructSeconds: selfDestructSeconds ?? this.selfDestructSeconds,
     );
   }
 }

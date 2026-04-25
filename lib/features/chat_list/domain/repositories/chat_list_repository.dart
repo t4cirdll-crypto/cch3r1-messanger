@@ -48,6 +48,13 @@ abstract class ChatListRepository {
   /// Помечает все сообщения диалога прочитанными.
   Future<void> markRead(String conversationId);
 
+  /// Включает/выключает self-destruct (исчезающие сообщения).
+  /// `seconds == 0` — выключить.
+  Future<void> setSelfDestruct({
+    required String conversationId,
+    required int seconds,
+  });
+
   /// Стрим изменений `conversations`/`conversation_members`/`messages`.
   Stream<void> watchConversationChanges();
 }

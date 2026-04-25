@@ -10,7 +10,7 @@ class LocalDatabase {
   final Database _db;
   Database get db => _db;
 
-  static const int _version = 4;
+  static const int _version = 5;
   static const String _dbName = 'cchr_messanger.db';
 
   static Future<LocalDatabase> open() async {
@@ -119,6 +119,24 @@ class LocalDatabase {
         'ON conversations (updated_at DESC);',
       );
     }
+    if (oldVersion < 5) {
+      // Phase 3: self-destruct.
+      try {
+        await db.execute(
+          'ALTER TABLE messages ADD COLUMN expires_at INTEGER;',
+        );
+      } on DatabaseException {
+        // Уже добавлена.
+      }
+      try {
+        await db.execute(
+          "ALTER TABLE conversations ADD COLUMN self_destruct_seconds "
+          'INTEGER NOT NULL DEFAULT 0;',
+        );
+      } on DatabaseException {
+        // Уже добавлена.
+      }
+    }
   }
 
   static Future<void> _onCreate(Database db, int version) async {
@@ -152,7 +170,8 @@ class LocalDatabase {
         last_message_created_at INTEGER,
         unread_count INTEGER NOT NULL DEFAULT 0,
         updated_at INTEGER NOT NULL,
-        muted INTEGER NOT NULL DEFAULT 0
+        muted INTEGER NOT NULL DEFAULT 0,
+        self_destruct_seconds INTEGER NOT NULL DEFAULT 0
       );
     ''');
     await db.execute('''
@@ -176,7 +195,8 @@ class LocalDatabase {
         attachment_size INTEGER,
         attachment_duration_ms INTEGER,
         attachment_width INTEGER,
-        attachment_height INTEGER
+        attachment_height INTEGER,
+        expires_at INTEGER
       );
     ''');
     await db.execute('''

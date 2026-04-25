@@ -57,6 +57,7 @@ class ChatListLocalDataSource {
         'unread_count': c.unreadCount,
         'updated_at': c.updatedAt.millisecondsSinceEpoch,
         'muted': c.muted ? 1 : 0,
+        'self_destruct_seconds': c.selfDestructSeconds,
       };
 
   ConversationEntity _rowToEntity(Map<String, Object?> row) {
@@ -103,6 +104,8 @@ class ChatListLocalDataSource {
       updatedAt:
           DateTime.fromMillisecondsSinceEpoch(row['updated_at']! as int),
       muted: ((row['muted'] as int?) ?? 0) == 1,
+      selfDestructSeconds:
+          (row['self_destruct_seconds'] as int?) ?? 0,
     );
   }
 }

@@ -75,6 +75,7 @@ class MessageEntity {
     this.attachmentDurationMs,
     this.attachmentWidth,
     this.attachmentHeight,
+    this.expiresAt,
   });
 
   final String id;
@@ -101,6 +102,13 @@ class MessageEntity {
   final int? attachmentDurationMs;
   final int? attachmentWidth;
   final int? attachmentHeight;
+
+  /// Время автоматического исчезновения (Phase 3 self-destruct).
+  /// `null` означает, что сообщение не исчезает.
+  final DateTime? expiresAt;
+
+  bool get isExpired =>
+      expiresAt != null && expiresAt!.isBefore(DateTime.now());
 
   bool get hasAttachment =>
       !isDeleted && attachmentPath != null && attachmentKind != null;
@@ -144,6 +152,8 @@ class MessageEntity {
     int? attachmentDurationMs,
     int? attachmentWidth,
     int? attachmentHeight,
+    DateTime? expiresAt,
+    bool clearExpiresAt = false,
   }) {
     return MessageEntity(
       id: id ?? this.id,
@@ -185,6 +195,7 @@ class MessageEntity {
           clearAttachment ? null : (attachmentWidth ?? this.attachmentWidth),
       attachmentHeight:
           clearAttachment ? null : (attachmentHeight ?? this.attachmentHeight),
+      expiresAt: clearExpiresAt ? null : (expiresAt ?? this.expiresAt),
     );
   }
 
@@ -212,7 +223,8 @@ class MessageEntity {
           attachmentSize == other.attachmentSize &&
           attachmentDurationMs == other.attachmentDurationMs &&
           attachmentWidth == other.attachmentWidth &&
-          attachmentHeight == other.attachmentHeight);
+          attachmentHeight == other.attachmentHeight &&
+          expiresAt == other.expiresAt);
 
   @override
   int get hashCode => Object.hash(
@@ -237,6 +249,7 @@ class MessageEntity {
           attachmentDurationMs,
           attachmentWidth,
           attachmentHeight,
+          expiresAt,
         ),
       );
 }

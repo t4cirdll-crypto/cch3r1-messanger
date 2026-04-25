@@ -19,6 +19,9 @@ class ConversationModel with _$ConversationModel {
     @JsonKey(name: 'created_by') String? createdBy,
     @JsonKey(name: 'user1_id') String? user1Id,
     @JsonKey(name: 'user2_id') String? user2Id,
+    @Default(0)
+    @JsonKey(name: 'self_destruct_seconds')
+    int selfDestructSeconds,
     @JsonKey(name: 'last_message') MessageModel? lastMessage,
   }) = _ConversationModel;
 
