@@ -1,0 +1,67 @@
+/// Все пользовательские строки собраны в одном месте. Русский — по умолчанию.
+class AppStrings {
+  const AppStrings._();
+
+  static const String appName = 'CCHR Messanger';
+
+  // Общие
+  static const String retry = 'Повторить';
+  static const String cancel = 'Отмена';
+  static const String save = 'Сохранить';
+  static const String ok = 'OK';
+  static const String loading = 'Загрузка…';
+  static const String offlineMode = 'Офлайн-режим';
+  static const String noInternet = 'Нет подключения к интернету';
+  static const String somethingWentWrong = 'Что-то пошло не так';
+
+  // Аутентификация
+  static const String signInTitle = 'Вход';
+  static const String signUpTitle = 'Создать аккаунт';
+  static const String usernameLabel = 'Ник';
+  static const String usernameHint = 'например, alex_01';
+  static const String passwordLabel = 'Пароль';
+  static const String passwordRepeatLabel = 'Повторите пароль';
+  static const String signInButton = 'Войти';
+  static const String signUpButton = 'Создать';
+  static const String goToSignIn = 'Уже есть аккаунт? Войти';
+  static const String goToSignUp = 'Нет аккаунта? Создать';
+  static const String signOut = 'Выйти';
+
+  static const String errorInvalidCredentials = 'Неверный ник или пароль';
+  static const String errorUsernameTaken = 'Этот ник уже занят';
+  static const String errorUsernameFormat =
+      'Ник: 3–20 символов, латиница, цифры, подчёркивание';
+  static const String errorPasswordShort = 'Пароль должен быть не короче 6 символов';
+  static const String errorPasswordsMismatch = 'Пароли не совпадают';
+  static const String errorUsernameRequired = 'Укажите ник';
+  static const String errorPasswordRequired = 'Укажите пароль';
+
+  static const String usernameAvailable = 'Ник свободен';
+  static const String usernameCheck = 'Проверить уникальность';
+
+  // Список чатов
+  static const String chatsTitle = 'Чаты';
+  static const String chatsEmpty = 'Нет диалогов. Начните переписку через поиск 🔍';
+  static const String newChat = 'Новый чат';
+
+  // Поиск
+  static const String searchTitle = 'Поиск пользователей';
+  static const String searchHint = 'Введите ник…';
+  static const String searchEmpty = 'Никого не нашли';
+  static const String startChat = 'Начать диалог';
+
+  // Чат
+  static const String messageHint = 'Сообщение…';
+  static const String messageSend = 'Отправить';
+  static const String messageRead = 'Прочитано';
+  static const String messageDelivered = 'Доставлено';
+  static const String online = 'в сети';
+  static String lastSeen(String ago) => 'был(а) $ago';
+
+  // Профиль
+  static const String profileTitle = 'Профиль';
+  static const String displayNameLabel = 'Отображаемое имя';
+  static const String editAvatar = 'Сменить аватарку';
+  static const String avatarUpdated = 'Аватарка обновлена';
+  static const String profileSaved = 'Профиль сохранён';
+}

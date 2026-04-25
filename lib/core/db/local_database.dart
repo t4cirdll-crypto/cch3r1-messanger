@@ -1,0 +1,87 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
+
+/// Обёртка над sqflite: кэш профиля / чатов / сообщений.
+class LocalDatabase {
+  LocalDatabase._(this._db);
+
+  final Database _db;
+  Database get db => _db;
+
+  static const int _version = 1;
+  static const String _dbName = 'cchr_messanger.db';
+
+  static Future<LocalDatabase> open() async {
+    final String dir = (await getApplicationDocumentsDirectory()).path;
+    final String path = p.join(dir, _dbName);
+    final Database db = await openDatabase(
+      path,
+      version: _version,
+      onCreate: _onCreate,
+    );
+    return LocalDatabase._(db);
+  }
+
+  static Future<void> _onCreate(Database db, int version) async {
+    await db.execute('''
+      CREATE TABLE profiles (
+        id TEXT PRIMARY KEY,
+        username TEXT NOT NULL,
+        display_name TEXT,
+        avatar_url TEXT,
+        is_online INTEGER NOT NULL DEFAULT 0,
+        last_seen INTEGER,
+        created_at INTEGER
+      );
+    ''');
+    await db.execute('''
+      CREATE TABLE conversations (
+        id TEXT PRIMARY KEY,
+        user1_id TEXT NOT NULL,
+        user2_id TEXT NOT NULL,
+        peer_id TEXT NOT NULL,
+        peer_username TEXT,
+        peer_display_name TEXT,
+        peer_avatar_url TEXT,
+        peer_is_online INTEGER NOT NULL DEFAULT 0,
+        peer_last_seen INTEGER,
+        last_message_id TEXT,
+        last_message_content TEXT,
+        last_message_sender_id TEXT,
+        last_message_is_read INTEGER,
+        last_message_created_at INTEGER,
+        unread_count INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL
+      );
+    ''');
+    await db.execute('''
+      CREATE TABLE messages (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL,
+        sender_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        is_read INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+      );
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_messages_conv_created '
+      'ON messages (conversation_id, created_at DESC);',
+    );
+    await db.execute(
+      'CREATE INDEX idx_conversations_updated '
+      'ON conversations (updated_at DESC);',
+    );
+  }
+
+  Future<void> close() => _db.close();
+}
+
+final Provider<Future<LocalDatabase>> localDatabaseProvider =
+    Provider<Future<LocalDatabase>>((Ref ref) async {
+  final LocalDatabase db = await LocalDatabase.open();
+  ref.onDispose(() async => db.close());
+  return db;
+});
