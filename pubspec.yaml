@@ -52,6 +52,12 @@ dependencies:
   video_player: ^2.9.1
   open_filex: ^4.5.0
 
+dependency_overrides:
+  # record 5.2.1 транзитивно тянет record_linux 0.7.2, который не реализует
+  # новые члены record_platform_interface 1.5.0 → ошибка компиляции даже
+  # для Android. Принудительно поднимаем record_linux до совместимой версии.
+  record_linux: ^1.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
