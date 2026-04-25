@@ -10,7 +10,7 @@ class LocalDatabase {
   final Database _db;
   Database get db => _db;
 
-  static const int _version = 5;
+  static const int _version = 6;
   static const String _dbName = 'cchr_messanger.db';
 
   static Future<LocalDatabase> open() async {
@@ -137,6 +137,14 @@ class LocalDatabase {
         // Уже добавлена.
       }
     }
+    if (oldVersion < 6) {
+      // Phase 4: settings (bio).
+      try {
+        await db.execute('ALTER TABLE profiles ADD COLUMN bio TEXT;');
+      } on DatabaseException {
+        // Уже добавлена.
+      }
+    }
   }
 
   static Future<void> _onCreate(Database db, int version) async {
@@ -145,6 +153,7 @@ class LocalDatabase {
         id TEXT PRIMARY KEY,
         username TEXT NOT NULL,
         display_name TEXT,
+        bio TEXT,
         avatar_url TEXT,
         is_online INTEGER NOT NULL DEFAULT 0,
         last_seen INTEGER,

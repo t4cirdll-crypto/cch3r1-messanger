@@ -20,10 +20,14 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
-  Future<ProfileEntity> updateDisplayName(String displayName) async {
-    return (await remote.updateDisplayName(
+  Future<ProfileEntity> updateProfile({
+    String? displayName,
+    String? bio,
+  }) async {
+    return (await remote.updateProfile(
       userId: _uid,
       displayName: displayName,
+      bio: bio,
     ))
         .toEntity();
   }

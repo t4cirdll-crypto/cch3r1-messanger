@@ -9,13 +9,27 @@ class ProfileRemoteDataSource {
   ProfileRemoteDataSource(this._client);
   final SupabaseClient _client;
 
-  Future<ProfileModel> updateDisplayName({
+  Future<ProfileModel> updateProfile({
     required String userId,
-    required String displayName,
+    String? displayName,
+    String? bio,
   }) async {
+    final Map<String, dynamic> patch = <String, dynamic>{};
+    if (displayName != null) {
+      patch['display_name'] = displayName.trim();
+    }
+    if (bio != null) {
+      final String trimmed = bio.trim();
+      patch['bio'] = trimmed.isEmpty ? null : trimmed;
+    }
+    if (patch.isEmpty) {
+      final Map<String, dynamic> row =
+          await _client.from('profiles').select().eq('id', userId).single();
+      return ProfileModel.fromJson(row);
+    }
     final Map<String, dynamic> row = await _client
         .from('profiles')
-        .update(<String, dynamic>{'display_name': displayName.trim()})
+        .update(patch)
         .eq('id', userId)
         .select()
         .single();

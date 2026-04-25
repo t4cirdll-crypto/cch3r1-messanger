@@ -66,7 +66,7 @@ class ChatListRemoteDataSource {
         .from('conversation_members')
         .select(
           'conversation_id,user_id,role,joined_at,last_read_at,muted_until,'
-          'profile:profiles!conversation_members_user_id_fkey(id,username,display_name,avatar_url,is_online,last_seen,created_at)',
+          'profile:profiles!conversation_members_user_id_fkey(id,username,display_name,bio,avatar_url,is_online,last_seen,created_at)',
         )
         .inFilter('conversation_id', conversationIds);
     return rows
@@ -248,6 +248,17 @@ class ChatListRemoteDataSource {
       _client.rpc<void>('fn_set_self_destruct', params: <String, dynamic>{
         'p_conv_id': conversationId,
         'p_seconds': seconds,
+      });
+
+  /// Включает/выключает mute для текущего юзера в conversation_members.
+  /// `until == null` — снять mute.
+  Future<void> setMute({
+    required String conversationId,
+    required DateTime? until,
+  }) =>
+      _client.rpc<void>('fn_set_mute', params: <String, dynamic>{
+        'p_conv_id': conversationId,
+        'p_until': until?.toUtc().toIso8601String(),
       });
 
   /// Любое изменение, касающееся диалогов — рефетч списка.
