@@ -7,6 +7,7 @@ import '../../../../core/utils/date_format.dart';
 import '../../domain/entities/message_entity.dart';
 import 'attachment_audio_player.dart';
 import 'attachment_file_card.dart';
+import 'attachment_gif.dart';
 import 'attachment_image.dart';
 import 'attachment_video.dart';
 import 'reply_preview.dart';
@@ -222,19 +223,21 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
+  bool get _isVisualMedia =>
+      message.hasAttachment &&
+      (message.attachmentKind == AttachmentKind.image ||
+          message.attachmentKind == AttachmentKind.video ||
+          message.attachmentKind == AttachmentKind.gif);
+
   EdgeInsets _padding() {
-    if (message.hasAttachment &&
-        (message.attachmentKind == AttachmentKind.image ||
-            message.attachmentKind == AttachmentKind.video)) {
+    if (_isVisualMedia) {
       return const EdgeInsets.all(4);
     }
     return const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
   }
 
   EdgeInsets _textPadding() {
-    if (message.hasAttachment &&
-        (message.attachmentKind == AttachmentKind.image ||
-            message.attachmentKind == AttachmentKind.video)) {
+    if (_isVisualMedia) {
       return const EdgeInsets.symmetric(horizontal: 8, vertical: 2);
     }
     return EdgeInsets.zero;
@@ -261,6 +264,11 @@ class MessageBubble extends StatelessWidget {
         return AttachmentFileCard(
           message: message,
           foreground: fg,
+        );
+      case AttachmentKind.gif:
+        return AttachmentGif(
+          message: message,
+          maxWidth: maxWidth - 8,
         );
     }
   }

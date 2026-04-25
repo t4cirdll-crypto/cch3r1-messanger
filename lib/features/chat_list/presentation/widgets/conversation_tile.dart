@@ -112,6 +112,8 @@ class ConversationTile extends StatelessWidget {
         return '🎤 Голосовое сообщение';
       case AttachmentKind.file:
         return '📎 ${m.attachmentName ?? 'Файл'}';
+      case AttachmentKind.gif:
+        return '🎞 GIF';
       case null:
         return null;
     }

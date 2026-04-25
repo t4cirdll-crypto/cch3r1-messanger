@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/providers/supabase_providers.dart';
+import '../../../../core/services/notifications_listener.dart';
 import '../../../../services/connection_service.dart';
 import '../../domain/entities/conversation_entity.dart';
 import '../providers/chat_list_providers.dart';
@@ -33,6 +34,9 @@ class ChatListScreen extends ConsumerWidget {
         ref.watch(chatListControllerProvider);
     final String? uid = ref.watch(currentUserIdProvider);
     final AsyncValue<bool> online = ref.watch(connectivityProvider);
+
+    // Запускаем фоновый слушатель новых сообщений (локальные уведомления).
+    ref.read(messageNotificationsListenerProvider).start();
 
     return Scaffold(
       appBar: AppBar(
