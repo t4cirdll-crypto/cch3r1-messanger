@@ -55,8 +55,39 @@ class AppStrings {
   static const String messageSend = 'Отправить';
   static const String messageRead = 'Прочитано';
   static const String messageDelivered = 'Доставлено';
+  static const String messageEdited = 'изменено';
+  static const String messageDeleted = 'Сообщение удалено';
+  static const String messageForwarded = 'Пересланное сообщение';
+  static const String messagePinned = 'Закреплено';
   static const String online = 'в сети';
   static String lastSeen(String ago) => 'был(а) $ago';
+
+  // Действия с сообщением
+  static const String actionReply = 'Ответить';
+  static const String actionEdit = 'Редактировать';
+  static const String actionCopy = 'Копировать';
+  static const String actionForward = 'Переслать';
+  static const String actionPin = 'Закрепить';
+  static const String actionUnpin = 'Открепить';
+  static const String actionDelete = 'Удалить';
+  static const String actionDeleteForMe = 'Удалить у себя';
+  static const String actionDeleteForAll = 'Удалить у всех';
+  static const String actionReact = 'Реакция';
+
+  // Поиск в чате
+  static const String searchInChat = 'Поиск в чате';
+  static const String searchInChatHint = 'Текст сообщения…';
+  static const String searchNoResults = 'Ничего не найдено';
+
+  // Forward picker
+  static const String forwardTitle = 'Кому переслать?';
+
+  // Edit
+  static const String editTitle = 'Редактирование';
+  static const String editHint = 'Новый текст…';
+  static const String editTooOld =
+      'Сообщение нельзя редактировать (старше 48 часов)';
+  static const String replyTo = 'Ответ на';
 
   // Профиль
   static const String profileTitle = 'Профиль';

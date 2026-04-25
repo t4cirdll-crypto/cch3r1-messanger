@@ -7,26 +7,43 @@ import 'attachment_audio_player.dart';
 import 'attachment_file_card.dart';
 import 'attachment_image.dart';
 import 'attachment_video.dart';
+import 'reply_preview.dart';
 
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
     super.key,
     required this.message,
     required this.isMine,
+    required this.currentUserId,
     this.showRead = false,
+    this.highlight = false,
+    this.onLongPress,
+    this.onReactionTap,
   });
 
   final MessageEntity message;
   final bool isMine;
+  final String? currentUserId;
   final bool showRead;
+  final bool highlight;
+  final VoidCallback? onLongPress;
+  final void Function(String emoji)? onReactionTap;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
 
-    final Color bg = isMine ? scheme.primary : scheme.surfaceContainerHighest;
-    final Color fg = isMine ? scheme.onPrimary : scheme.onSurface;
+    final Color bg = highlight
+        ? scheme.tertiaryContainer
+        : isMine
+            ? scheme.primary
+            : scheme.surfaceContainerHighest;
+    final Color fg = highlight
+        ? scheme.onTertiaryContainer
+        : isMine
+            ? scheme.onPrimary
+            : scheme.onSurface;
     final BorderRadius radius = BorderRadius.only(
       topLeft: const Radius.circular(16),
       topRight: const Radius.circular(16),
@@ -34,62 +51,161 @@ class MessageBubble extends StatelessWidget {
       bottomRight: Radius.circular(isMine ? 4 : 16),
     );
 
-    final double maxWidth = MediaQuery.of(context).size.width * 0.75;
+    final double maxWidth = MediaQuery.of(context).size.width * 0.78;
 
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-          padding: _padding(),
-          decoration: BoxDecoration(color: bg, borderRadius: radius),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              if (message.hasAttachment)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: _attachmentWidget(maxWidth, fg),
-                ),
-              if (message.hasAttachment && message.hasText)
-                const SizedBox(height: 6),
-              if (message.hasText)
-                Padding(
-                  padding: _textPadding(),
-                  child: Text(
-                    message.content!,
-                    style: theme.textTheme.bodyLarge?.copyWith(color: fg),
-                  ),
-                ),
-              const SizedBox(height: 2),
-              Padding(
-                padding: _textPadding(),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Text(
-                      DateFormatter.shortTime(message.createdAt),
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: fg.withValues(alpha: 0.75)),
-                    ),
-                    if (isMine && showRead) ...<Widget>[
-                      const SizedBox(width: 4),
-                      Icon(
-                        message.isRead ? Icons.done_all : Icons.check,
-                        size: 16,
-                        color: fg.withValues(alpha: 0.85),
-                        semanticLabel: message.isRead
-                            ? AppStrings.messageRead
-                            : AppStrings.messageDelivered,
+        child: GestureDetector(
+          onLongPress: onLongPress,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+            child: Column(
+              crossAxisAlignment:
+                  isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Container(
+                  padding: _padding(),
+                  decoration: BoxDecoration(color: bg, borderRadius: radius),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      if (message.isPinned)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Icon(Icons.push_pin,
+                                  size: 12, color: fg.withValues(alpha: 0.75)),
+                              const SizedBox(width: 4),
+                              Text(
+                                AppStrings.messagePinned,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: fg.withValues(alpha: 0.75),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (message.isForwarded)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Icon(Icons.fast_forward,
+                                  size: 14, color: fg.withValues(alpha: 0.75)),
+                              const SizedBox(width: 4),
+                              Text(
+                                AppStrings.messageForwarded,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: fg.withValues(alpha: 0.75),
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (message.replyTo != null)
+                        QuotedMessage(
+                          message: message.replyTo!,
+                          foreground: fg,
+                          barColor: isMine ? scheme.onPrimary : scheme.primary,
+                        ),
+                      if (message.isDeleted)
+                        Padding(
+                          padding: _textPadding(),
+                          child: Text(
+                            AppStrings.messageDeleted,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: fg.withValues(alpha: 0.7),
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        )
+                      else ...<Widget>[
+                        if (message.hasAttachment)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: _attachmentWidget(maxWidth, fg),
+                          ),
+                        if (message.hasAttachment && message.hasText)
+                          const SizedBox(height: 6),
+                        if (message.hasText)
+                          Padding(
+                            padding: _textPadding(),
+                            child: Text(
+                              message.content!,
+                              style: theme.textTheme.bodyLarge
+                                  ?.copyWith(color: fg),
+                            ),
+                          ),
+                      ],
+                      const SizedBox(height: 2),
+                      Padding(
+                        padding: _textPadding(),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            if (message.isEdited && !message.isDeleted) ...<Widget>[
+                              Text(
+                                AppStrings.messageEdited,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: fg.withValues(alpha: 0.7),
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            Text(
+                              DateFormatter.shortTime(message.createdAt),
+                              style: theme.textTheme.bodySmall
+                                  ?.copyWith(color: fg.withValues(alpha: 0.75)),
+                            ),
+                            if (isMine && showRead && !message.isDeleted) ...<Widget>[
+                              const SizedBox(width: 4),
+                              Icon(
+                                message.isRead ? Icons.done_all : Icons.check,
+                                size: 16,
+                                color: fg.withValues(alpha: 0.85),
+                                semanticLabel: message.isRead
+                                    ? AppStrings.messageRead
+                                    : AppStrings.messageDelivered,
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                if (message.hasReactions)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      alignment:
+                          isMine ? WrapAlignment.end : WrapAlignment.start,
+                      children: message.reactions
+                          .map((ReactionEntity r) => _ReactionChip(
+                                reaction: r,
+                                mine: r.isMine(currentUserId),
+                                onTap: onReactionTap == null
+                                    ? null
+                                    : () => onReactionTap!(r.emoji),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -97,8 +213,6 @@ class MessageBubble extends StatelessWidget {
   }
 
   EdgeInsets _padding() {
-    // Если есть медиа-вложение — ужмём паддинг, чтобы картинка/видео
-    // прилегало к краям пузыря.
     if (message.hasAttachment &&
         (message.attachmentKind == AttachmentKind.image ||
             message.attachmentKind == AttachmentKind.video)) {
@@ -139,5 +253,52 @@ class MessageBubble extends StatelessWidget {
           foreground: fg,
         );
     }
+  }
+}
+
+class _ReactionChip extends StatelessWidget {
+  const _ReactionChip({
+    required this.reaction,
+    required this.mine,
+    this.onTap,
+  });
+
+  final ReactionEntity reaction;
+  final bool mine;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final Color bg = mine ? cs.primaryContainer : cs.surfaceContainerHigh;
+    final Color fg = mine ? cs.onPrimaryContainer : cs.onSurface;
+    return Material(
+      color: bg,
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: mine ? cs.primary : cs.outlineVariant,
+          width: mine ? 1.2 : 0.5,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(reaction.emoji, style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 4),
+              Text(
+                '${reaction.count}',
+                style: theme.textTheme.labelSmall?.copyWith(color: fg),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

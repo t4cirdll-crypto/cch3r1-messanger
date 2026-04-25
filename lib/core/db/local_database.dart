@@ -10,7 +10,7 @@ class LocalDatabase {
   final Database _db;
   Database get db => _db;
 
-  static const int _version = 2;
+  static const int _version = 3;
   static const String _dbName = 'cchr_messanger.db';
 
   static Future<LocalDatabase> open() async {
@@ -31,7 +31,6 @@ class LocalDatabase {
     int newVersion,
   ) async {
     if (oldVersion < 2) {
-      // v2: вложения в сообщениях.
       const List<String> alters = <String>[
         'ALTER TABLE messages ADD COLUMN attachment_path TEXT;',
         'ALTER TABLE messages ADD COLUMN attachment_kind TEXT;',
@@ -48,6 +47,40 @@ class LocalDatabase {
         } on DatabaseException {
           // Колонка уже добавлена — пропускаем.
         }
+      }
+    }
+    if (oldVersion < 3) {
+      const List<String> alters = <String>[
+        'ALTER TABLE messages ADD COLUMN edited_at INTEGER;',
+        'ALTER TABLE messages ADD COLUMN deleted_at INTEGER;',
+        'ALTER TABLE messages ADD COLUMN reply_to_id TEXT;',
+        'ALTER TABLE messages ADD COLUMN forwarded_from_message_id TEXT;',
+        'ALTER TABLE messages ADD COLUMN forwarded_from_sender_id TEXT;',
+        'ALTER TABLE messages ADD COLUMN pinned_at INTEGER;',
+      ];
+      for (final String sql in alters) {
+        try {
+          await db.execute(sql);
+        } on DatabaseException {
+          // Колонка уже добавлена — пропускаем.
+        }
+      }
+      try {
+        await db.execute('''
+          CREATE TABLE message_reactions (
+            message_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            emoji TEXT NOT NULL,
+            created_at INTEGER,
+            PRIMARY KEY (message_id, user_id, emoji)
+          );
+        ''');
+        await db.execute(
+          'CREATE INDEX idx_reactions_message '
+          'ON message_reactions (message_id);',
+        );
+      } on DatabaseException {
+        // Таблица уже создана.
       }
     }
   }
@@ -92,6 +125,12 @@ class LocalDatabase {
         content TEXT,
         is_read INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
+        edited_at INTEGER,
+        deleted_at INTEGER,
+        reply_to_id TEXT,
+        forwarded_from_message_id TEXT,
+        forwarded_from_sender_id TEXT,
+        pinned_at INTEGER,
         attachment_path TEXT,
         attachment_kind TEXT,
         attachment_name TEXT,
@@ -102,6 +141,19 @@ class LocalDatabase {
         attachment_height INTEGER
       );
     ''');
+    await db.execute('''
+      CREATE TABLE message_reactions (
+        message_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        emoji TEXT NOT NULL,
+        created_at INTEGER,
+        PRIMARY KEY (message_id, user_id, emoji)
+      );
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_reactions_message '
+      'ON message_reactions (message_id);',
+    );
     await db.execute(
       'CREATE INDEX idx_messages_conv_created '
       'ON messages (conversation_id, created_at DESC);',
