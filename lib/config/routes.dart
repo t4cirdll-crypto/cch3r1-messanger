@@ -14,6 +14,8 @@ import '../features/chat/presentation/screens/forward_picker_screen.dart';
 import '../features/chat/presentation/screens/in_chat_search_screen.dart';
 import '../features/chat_list/domain/entities/conversation_entity.dart';
 import '../features/chat_list/presentation/screens/chat_list_screen.dart';
+import '../features/chat_list/presentation/screens/create_group_screen.dart';
+import '../features/chat_list/presentation/screens/group_info_screen.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
 import '../features/search_user/presentation/screens/search_user_screen.dart';
 
@@ -92,6 +94,17 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
       GoRoute(
         path: '/forward-picker',
         builder: (_, __) => const ForwardPickerScreen(),
+      ),
+      GoRoute(
+        path: '/group/new',
+        builder: (_, __) => const CreateGroupScreen(),
+      ),
+      GoRoute(
+        path: '/group/:id/info',
+        builder: (BuildContext _, GoRouterState state) {
+          final String id = state.pathParameters['id']!;
+          return GroupInfoScreen(conversationId: id);
+        },
       ),
     ],
     errorBuilder: (BuildContext _, GoRouterState state) => Scaffold(

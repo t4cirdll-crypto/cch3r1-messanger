@@ -21,7 +21,6 @@ class ConversationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final ProfileEntity peer = conversation.peer;
     final MessageEntity? last = conversation.lastMessage;
     final String? lastContent = _previewFor(last);
     final DateTime time = last?.createdAt ?? conversation.updatedAt;
@@ -31,12 +30,32 @@ class ConversationTile extends StatelessWidget {
 
     return ListTile(
       onTap: onTap,
-      leading: _Avatar(peer: peer),
-      title: Text(
-        peer.effectiveName,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.titleMedium,
+      leading: _Avatar(conversation: conversation),
+      title: Row(
+        children: <Widget>[
+          if (conversation.isGroup)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Icon(Icons.group, size: 18, color: theme.colorScheme.primary),
+            ),
+          Expanded(
+            child: Text(
+              conversation.effectiveTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleMedium,
+            ),
+          ),
+          if (conversation.muted)
+            Padding(
+              padding: const EdgeInsets.only(left: 4),
+              child: Icon(
+                Icons.notifications_off,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+        ],
       ),
       subtitle: Text(
         lastContent == null
@@ -62,7 +81,9 @@ class ConversationTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary,
+                color: conversation.muted
+                    ? theme.colorScheme.outline
+                    : theme.colorScheme.primary,
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
@@ -98,16 +119,31 @@ class ConversationTile extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.peer});
-  final ProfileEntity peer;
+  const _Avatar({required this.conversation});
+  final ConversationEntity conversation;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final String initial = (peer.effectiveName.isEmpty
-            ? '?'
-            : peer.effectiveName.substring(0, 1))
-        .toUpperCase();
+
+    if (conversation.isSaved) {
+      return CircleAvatar(
+        radius: 26,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
+        child: const Icon(Icons.bookmark),
+      );
+    }
+    if (conversation.isGroup) {
+      return CircleAvatar(
+        radius: 26,
+        backgroundColor: theme.colorScheme.secondaryContainer,
+        foregroundColor: theme.colorScheme.onSecondaryContainer,
+        child: Text(_initials(conversation.effectiveTitle)),
+      );
+    }
+    final ProfileEntity? peer = conversation.peer;
+    final String initial = _initials(peer?.effectiveName ?? '?');
 
     return Stack(
       children: <Widget>[
@@ -115,12 +151,12 @@ class _Avatar extends StatelessWidget {
           radius: 26,
           backgroundColor: theme.colorScheme.primaryContainer,
           foregroundColor: theme.colorScheme.onPrimaryContainer,
-          backgroundImage: peer.avatarUrl != null
-              ? CachedNetworkImageProvider(peer.avatarUrl!)
+          backgroundImage: peer?.avatarUrl != null
+              ? CachedNetworkImageProvider(peer!.avatarUrl!)
               : null,
-          child: peer.avatarUrl == null ? Text(initial) : null,
+          child: peer?.avatarUrl == null ? Text(initial) : null,
         ),
-        if (peer.isOnline)
+        if (peer?.isOnline ?? false)
           Positioned(
             right: 0,
             bottom: 0,
@@ -139,5 +175,11 @@ class _Avatar extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  static String _initials(String name) {
+    final String trimmed = name.trim();
+    if (trimmed.isEmpty) return '?';
+    return trimmed.substring(0, 1).toUpperCase();
   }
 }

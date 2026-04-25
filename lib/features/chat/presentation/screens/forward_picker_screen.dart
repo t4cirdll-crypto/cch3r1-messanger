@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../chat_list/domain/entities/conversation_entity.dart';
 import '../../../chat_list/presentation/providers/chat_list_providers.dart';
 
@@ -38,19 +39,10 @@ class ForwardPickerScreen extends ConsumerWidget {
             itemBuilder: (BuildContext _, int i) {
               final ConversationEntity c = list[i];
               return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: c.peer.avatarUrl != null
-                      ? CachedNetworkImageProvider(c.peer.avatarUrl!)
-                      : null,
-                  child: c.peer.avatarUrl == null
-                      ? Text(
-                          c.peer.effectiveName.substring(0, 1).toUpperCase(),
-                        )
-                      : null,
-                ),
-                title: Text(c.peer.effectiveName),
+                leading: _buildAvatar(context, c),
+                title: Text(c.effectiveTitle),
                 subtitle: Text(
-                  '@${c.peer.username}',
+                  _subtitleFor(c),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -61,5 +53,43 @@ class ForwardPickerScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Widget _buildAvatar(BuildContext context, ConversationEntity c) {
+    final ThemeData theme = Theme.of(context);
+    if (c.isSaved) {
+      return CircleAvatar(
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
+        child: const Icon(Icons.bookmark),
+      );
+    }
+    if (c.isGroup) {
+      final String t = c.effectiveTitle;
+      return CircleAvatar(
+        backgroundColor: theme.colorScheme.secondaryContainer,
+        foregroundColor: theme.colorScheme.onSecondaryContainer,
+        child: Text(t.isEmpty ? '?' : t.substring(0, 1).toUpperCase()),
+      );
+    }
+    final ProfileEntity? peer = c.peer;
+    return CircleAvatar(
+      backgroundImage: peer?.avatarUrl != null
+          ? CachedNetworkImageProvider(peer!.avatarUrl!)
+          : null,
+      child: peer?.avatarUrl == null
+          ? Text(
+              (peer?.effectiveName ?? '?').isEmpty
+                  ? '?'
+                  : (peer?.effectiveName ?? '?').substring(0, 1).toUpperCase(),
+            )
+          : null,
+    );
+  }
+
+  String _subtitleFor(ConversationEntity c) {
+    if (c.isSaved) return 'Заметки для себя';
+    if (c.isGroup) return '${c.members.length} участник(ов)';
+    return '@${c.peer?.username ?? ''}';
   }
 }

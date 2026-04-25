@@ -13,6 +13,20 @@ import '../widgets/conversation_tile.dart';
 class ChatListScreen extends ConsumerWidget {
   const ChatListScreen({super.key});
 
+  Future<void> _openSaved(BuildContext context, WidgetRef ref) async {
+    try {
+      final ConversationEntity saved =
+          await ref.read(chatListControllerProvider.notifier).openSaved();
+      if (!context.mounted) return;
+      context.push('/chat/${saved.id}', extra: saved);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${AppStrings.somethingWentWrong}: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<ConversationEntity>> state =
@@ -24,6 +38,11 @@ class ChatListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text(AppStrings.chatsTitle),
         actions: <Widget>[
+          IconButton(
+            tooltip: 'Saved Messages',
+            icon: const Icon(Icons.bookmark_outline),
+            onPressed: () => _openSaved(context, ref),
+          ),
           IconButton(
             tooltip: AppStrings.profileTitle,
             icon: const Icon(Icons.person_outline),
@@ -110,10 +129,53 @@ class ChatListScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/search'),
-        icon: const Icon(Icons.search),
-        label: const Text(AppStrings.newChat),
+      floatingActionButton: _NewChatFab(
+        onNewChat: () => context.push('/search'),
+        onNewGroup: () => context.push('/group/new'),
+      ),
+    );
+  }
+}
+
+/// FAB с двумя действиями: новый чат / новая группа.
+class _NewChatFab extends StatelessWidget {
+  const _NewChatFab({required this.onNewChat, required this.onNewGroup});
+
+  final VoidCallback onNewChat;
+  final VoidCallback onNewGroup;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      tooltip: AppStrings.newChat,
+      position: PopupMenuPosition.over,
+      onSelected: (String value) {
+        if (value == 'chat') onNewChat();
+        if (value == 'group') onNewGroup();
+      },
+      itemBuilder: (BuildContext _) => <PopupMenuEntry<String>>[
+        const PopupMenuItem<String>(
+          value: 'chat',
+          child: ListTile(
+            leading: Icon(Icons.person_add),
+            title: Text('Новый чат'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'group',
+          child: ListTile(
+            leading: Icon(Icons.group_add),
+            title: Text('Новая группа'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+      ],
+      child: const FloatingActionButton.extended(
+        // PopupMenuButton перехватывает onPressed; FAB здесь визуально.
+        onPressed: null,
+        icon: Icon(Icons.edit),
+        label: Text(AppStrings.newChat),
       ),
     );
   }

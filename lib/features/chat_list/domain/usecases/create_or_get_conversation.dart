@@ -9,5 +9,5 @@ class CreateOrGetConversation
 
   @override
   Future<ConversationEntity> call(String peerId) =>
-      _repo.createOrGetConversation(peerId);
+      _repo.createOrGetDm(peerId);
 }

@@ -75,6 +75,34 @@ class ChatListController
       return uc.call(const NoParams());
     });
   }
+
+  Future<ConversationEntity> createGroup({
+    required String title,
+    required List<String> memberIds,
+  }) async {
+    final ChatListRepository repo =
+        await ref.read(chatListRepositoryProvider.future);
+    final ConversationEntity created = await repo.createGroup(
+      title: title,
+      memberIds: memberIds,
+    );
+    await refresh();
+    return created;
+  }
+
+  Future<ConversationEntity> openSaved() async {
+    final ChatListRepository repo =
+        await ref.read(chatListRepositoryProvider.future);
+    final ConversationEntity saved = await repo.createOrGetSaved();
+    await refresh();
+    return saved;
+  }
+
+  Future<void> markRead(String conversationId) async {
+    final ChatListRepository repo =
+        await ref.read(chatListRepositoryProvider.future);
+    await repo.markRead(conversationId);
+  }
 }
 
 final AsyncNotifierProvider<ChatListController, List<ConversationEntity>>

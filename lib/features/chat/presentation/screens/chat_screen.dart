@@ -246,7 +246,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         forwardedFromMessageId: m.id,
         forwardedFromSenderId: m.senderId,
       );
-      if (mounted) _toast('Переслано в @${target.peer.username}');
+      if (mounted) {
+        final String dest = target.isDm
+            ? '@${target.peer?.username ?? ''}'
+            : target.effectiveTitle;
+        _toast('Переслано в $dest');
+      }
     } catch (e) {
       if (mounted) _toast('Не удалось переслать: $e');
     }
@@ -422,9 +427,84 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   Widget _buildTitle(BuildContext context) {
-    final ProfileEntity? peer = widget.conversation?.peer;
-    if (peer == null) {
+    final ConversationEntity? conv = widget.conversation;
+    if (conv == null) {
       return const Text('Чат');
+    }
+
+    if (conv.isSaved) {
+      return Row(
+        children: <Widget>[
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            child: const Icon(Icons.bookmark, size: 18),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Saved Messages',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (conv.isGroup) {
+      final String title = conv.effectiveTitle;
+      final int count = conv.members.length;
+      return InkWell(
+        onTap: () => context.push('/group/${conv.id}/info'),
+        child: Row(
+          children: <Widget>[
+            CircleAvatar(
+              radius: 18,
+              backgroundColor:
+                  Theme.of(context).colorScheme.secondaryContainer,
+              foregroundColor:
+                  Theme.of(context).colorScheme.onSecondaryContainer,
+              child: Text(
+                title.isEmpty ? '?' : title.substring(0, 1).toUpperCase(),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    '$count участник(ов)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color:
+                          Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final ProfileEntity? peer = conv.peer;
+    if (peer == null) {
+      return Text(conv.effectiveTitle);
     }
     return Row(
       children: <Widget>[

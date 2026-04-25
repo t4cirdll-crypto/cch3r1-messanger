@@ -2,41 +2,43 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../../auth/data/models/profile_model.dart';
 import '../../../chat/data/models/message_model.dart';
-import '../../domain/entities/conversation_entity.dart';
 
 part 'conversation_model.freezed.dart';
 part 'conversation_model.g.dart';
 
+/// Сырые поля строки `conversations` без агрегации участников/peer/unread.
+/// Гидратация в `ConversationEntity` выполняется в репозитории.
 @freezed
 class ConversationModel with _$ConversationModel {
-  const ConversationModel._();
-
   const factory ConversationModel({
     required String id,
-    @JsonKey(name: 'user1_id') required String user1Id,
-    @JsonKey(name: 'user2_id') required String user2Id,
+    @JsonKey(name: 'kind') required String kind,
     @JsonKey(name: 'updated_at') required DateTime updatedAt,
-    @JsonKey(name: 'user1') ProfileModel? user1,
-    @JsonKey(name: 'user2') ProfileModel? user2,
+    @JsonKey(name: 'title') String? title,
+    @JsonKey(name: 'avatar_path') String? avatarPath,
+    @JsonKey(name: 'created_by') String? createdBy,
+    @JsonKey(name: 'user1_id') String? user1Id,
+    @JsonKey(name: 'user2_id') String? user2Id,
     @JsonKey(name: 'last_message') MessageModel? lastMessage,
-    @Default(0) int unreadCount,
   }) = _ConversationModel;
 
   factory ConversationModel.fromJson(Map<String, dynamic> json) =>
       _$ConversationModelFromJson(json);
+}
 
-  /// Возвращает сущность, в которой peer — это оппонент относительно `currentUserId`.
-  ConversationEntity toEntity(String currentUserId) {
-    final ProfileModel? peer = currentUserId == user1Id ? user2 : user1;
-    if (peer == null) {
-      throw StateError('peer profile not loaded for conversation $id');
-    }
-    return ConversationEntity(
-      id: id,
-      peer: peer.toEntity(),
-      lastMessage: lastMessage?.toEntity(),
-      unreadCount: unreadCount,
-      updatedAt: updatedAt,
-    );
-  }
+/// Строка `conversation_members` с присоединённым profiles.
+@freezed
+class ConversationMemberModel with _$ConversationMemberModel {
+  const factory ConversationMemberModel({
+    @JsonKey(name: 'conversation_id') required String conversationId,
+    @JsonKey(name: 'user_id') required String userId,
+    @JsonKey(name: 'role') required String role,
+    @JsonKey(name: 'joined_at') required DateTime joinedAt,
+    @JsonKey(name: 'last_read_at') DateTime? lastReadAt,
+    @JsonKey(name: 'muted_until') DateTime? mutedUntil,
+    @JsonKey(name: 'profile') ProfileModel? profile,
+  }) = _ConversationMemberModel;
+
+  factory ConversationMemberModel.fromJson(Map<String, dynamic> json) =>
+      _$ConversationMemberModelFromJson(json);
 }
