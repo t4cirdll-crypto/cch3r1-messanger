@@ -1,0 +1,83 @@
+name: Build iOS IPA (unsigned)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ipa:
+    name: Build iOS IPA (unsigned, для джейлбрейка / TrollStore / AltStore)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Code generation (freezed / json / riverpod)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Resolve build defines (Supabase / Giphy)
+        id: cfg
+        run: |
+          DEFINES=""
+          if [ -n "${{ secrets.SUPABASE_URL }}" ]; then
+            DEFINES="$DEFINES --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}"
+          fi
+          if [ -n "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            DEFINES="$DEFINES --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"
+          fi
+          if [ -n "${{ secrets.GIPHY_API_KEY }}" ]; then
+            DEFINES="$DEFINES --dart-define=GIPHY_API_KEY=${{ secrets.GIPHY_API_KEY }}"
+          fi
+          echo "defines=$DEFINES" >> "$GITHUB_OUTPUT"
+
+      - name: Build iOS (release, no codesign)
+        run: flutter build ios --release --no-codesign ${{ steps.cfg.outputs.defines }}
+
+      # Flutter создаёт build/ios/iphoneos/Runner.app — оборачиваем его в Payload/
+      # и зипуем в .ipa. Бинарь не подписан — установка через TrollStore /
+      # AltStore / Sideloadly / на джейлбрейкнутые устройства.
+      - name: Pack unsigned IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="build/ios/iphoneos/Runner.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "Runner.app not found at $APP_PATH"
+            ls -R build/ios || true
+            exit 1
+          fi
+          mkdir -p artifacts/Payload
+          cp -R "$APP_PATH" artifacts/Payload/Runner.app
+          (cd artifacts && zip -qr cch3r1-messanger-unsigned.ipa Payload)
+          rm -rf artifacts/Payload
+          ls -lh artifacts
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: cch3r1-messanger-ios-unsigned-ipa
+          path: artifacts/cch3r1-messanger-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
