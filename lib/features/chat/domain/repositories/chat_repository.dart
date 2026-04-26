@@ -100,6 +100,13 @@ abstract class ChatRepository {
   /// Стрим новых/обновлённых сообщений конкретного диалога.
   Stream<MessageEntity> watchMessages(String conversationId);
 
+  /// Стрим id сообщений, удалённых физически (например, sweep исчезающих).
+  Stream<String> watchMessageDeletes(String conversationId);
+
+  /// Триггерит серверный sweep исчезающих сообщений (физическое удаление
+  /// записей с `expires_at <= now()`).
+  Future<int> sweepExpiredMessages();
+
   /// Стрим изменений реакций (фильтр по диалогу делает клиент по message_id).
   Stream<ReactionDelta> watchReactions();
 }

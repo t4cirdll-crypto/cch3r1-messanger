@@ -8,6 +8,12 @@ import '../features/auth/domain/entities/profile_entity.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
+import '../features/admin/presentation/screens/admin_broadcast_screen.dart';
+import '../features/admin/presentation/screens/admin_conversations_screen.dart';
+import '../features/admin/presentation/screens/admin_home_screen.dart';
+import '../features/admin/presentation/screens/admin_messages_screen.dart';
+import '../features/admin/presentation/screens/admin_users_screen.dart';
+import '../features/admin/presentation/screens/device_id_screen.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
 import '../features/chat/presentation/screens/chat_screen.dart';
 import '../features/chat/presentation/screens/forward_picker_screen.dart';
@@ -105,6 +111,33 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
           final String id = state.pathParameters['id']!;
           return GroupInfoScreen(conversationId: id);
         },
+      ),
+      GoRoute(
+        path: '/device-id',
+        builder: (_, __) => const DeviceIdScreen(),
+      ),
+      GoRoute(
+        path: '/admin',
+        builder: (_, __) => const AdminHomeScreen(),
+      ),
+      GoRoute(
+        path: '/admin/users',
+        builder: (_, __) => const AdminUsersScreen(),
+      ),
+      GoRoute(
+        path: '/admin/conversations',
+        builder: (_, __) => const AdminConversationsScreen(),
+      ),
+      GoRoute(
+        path: '/admin/conversation/:id',
+        builder: (BuildContext _, GoRouterState state) {
+          final String id = state.pathParameters['id']!;
+          return AdminMessagesScreen(conversationId: id);
+        },
+      ),
+      GoRoute(
+        path: '/admin/broadcast',
+        builder: (_, __) => const AdminBroadcastScreen(),
       ),
     ],
     errorBuilder: (BuildContext _, GoRouterState state) => Scaffold(

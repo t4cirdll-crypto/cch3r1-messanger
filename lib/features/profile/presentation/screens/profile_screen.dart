@@ -3,10 +3,12 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/providers/app_settings_providers.dart';
+import '../../../admin/presentation/providers/admin_providers.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../domain/usecases/update_profile.dart';
@@ -24,6 +26,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final TextEditingController _bio = TextEditingController();
   bool _saving = false;
   bool _initialized = false;
+
+  /// Скрытый bootstrap: 5 быстрых тапов по версии открывают экран device id.
+  int _versionTapCount = 0;
+  DateTime _lastVersionTap = DateTime.fromMillisecondsSinceEpoch(0);
+
+  void _onVersionTap() {
+    final DateTime now = DateTime.now();
+    if (now.difference(_lastVersionTap) > const Duration(seconds: 2)) {
+      _versionTapCount = 0;
+    }
+    _versionTapCount += 1;
+    _lastVersionTap = now;
+    if (_versionTapCount >= 5) {
+      _versionTapCount = 0;
+      context.push('/device-id');
+    }
+  }
 
   @override
   void dispose() {
@@ -219,10 +238,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 onTap: () => _setThemeMode(ThemeMode.dark),
               ),
               const SizedBox(height: 24),
+              // Админ-секция: видна только если текущий юзер + device — админ.
+              Consumer(
+                builder: (BuildContext _, WidgetRef ref, Widget? __) {
+                  final AsyncValue<bool> isAdmin =
+                      ref.watch(isAdminProvider);
+                  if (isAdmin.valueOrNull != true) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: FilledButton.tonalIcon(
+                      icon: const Icon(Icons.shield_outlined),
+                      label: const Text('Открыть админку'),
+                      onPressed: () => context.push('/admin'),
+                    ),
+                  );
+                },
+              ),
               OutlinedButton.icon(
                 onPressed: _saving ? null : _signOut,
                 icon: const Icon(Icons.logout),
                 label: const Text(AppStrings.signOut),
+              ),
+              const SizedBox(height: 24),
+              Center(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _onVersionTap,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'cch3r1 messanger v0.1.0',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                    ),
+                  ),
+                ),
               ),
             ],
           );

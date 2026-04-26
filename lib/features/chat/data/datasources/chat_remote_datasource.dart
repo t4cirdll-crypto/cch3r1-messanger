@@ -247,10 +247,10 @@ class ChatRemoteDataSource {
         .toList();
   }
 
-  /// Подписка на INSERT/UPDATE в `messages` конкретного диалога.
-  Stream<MessageModel> watchMessages(String conversationId) {
-    final StreamController<MessageModel> controller =
-        StreamController<MessageModel>.broadcast();
+  /// Подписка на INSERT/UPDATE/DELETE в `messages` конкретного диалога.
+  Stream<MessageStreamEvent> watchMessages(String conversationId) {
+    final StreamController<MessageStreamEvent> controller =
+        StreamController<MessageStreamEvent>.broadcast();
 
     final RealtimeChannel channel = _client
         .channel('public:messages:$conversationId')
@@ -264,7 +264,9 @@ class ChatRemoteDataSource {
             value: conversationId,
           ),
           callback: (PostgresChangePayload payload) {
-            controller.add(MessageModel.fromJson(payload.newRecord));
+            controller.add(MessageStreamEvent.upsert(
+              MessageModel.fromJson(payload.newRecord),
+            ));
           },
         )
         .onPostgresChanges(
@@ -277,7 +279,25 @@ class ChatRemoteDataSource {
             value: conversationId,
           ),
           callback: (PostgresChangePayload payload) {
-            controller.add(MessageModel.fromJson(payload.newRecord));
+            controller.add(MessageStreamEvent.upsert(
+              MessageModel.fromJson(payload.newRecord),
+            ));
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'conversation_id',
+            value: conversationId,
+          ),
+          callback: (PostgresChangePayload payload) {
+            final dynamic id = payload.oldRecord['id'];
+            if (id is String && id.isNotEmpty) {
+              controller.add(MessageStreamEvent.delete(id));
+            }
           },
         );
     channel.subscribe();
@@ -287,6 +307,15 @@ class ChatRemoteDataSource {
     };
 
     return controller.stream;
+  }
+
+  /// Запускает серверный sweep исчезающих сообщений (физическое удаление
+  /// тех, у кого `expires_at <= now()`). Возвращает количество удалённых.
+  Future<int> sweepExpiredMessages() async {
+    final dynamic res = await _client.rpc<dynamic>('fn_sweep_expired_messages');
+    if (res is int) return res;
+    if (res is num) return res.toInt();
+    return 0;
   }
 
   /// Подписка на изменения реакций (любые сообщения, фильтр по диалогу
@@ -356,4 +385,20 @@ class ReactionEvent {
   const ReactionEvent({required this.type, required this.reaction});
   final ReactionEventType type;
   final ReactionModel reaction;
+}
+
+/// Событие realtime-стрима сообщений: либо вставка/обновление, либо удаление.
+class MessageStreamEvent {
+  const MessageStreamEvent._({this.upserted, this.deletedId});
+
+  factory MessageStreamEvent.upsert(MessageModel m) =>
+      MessageStreamEvent._(upserted: m);
+
+  factory MessageStreamEvent.delete(String id) =>
+      MessageStreamEvent._(deletedId: id);
+
+  final MessageModel? upserted;
+  final String? deletedId;
+
+  bool get isDelete => deletedId != null;
 }

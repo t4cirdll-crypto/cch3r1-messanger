@@ -318,7 +318,10 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Stream<MessageEntity> watchMessages(String conversationId) async* {
-    await for (final MessageModel m in remote.watchMessages(conversationId)) {
+    await for (final MessageStreamEvent event
+        in remote.watchMessages(conversationId)) {
+      final MessageModel? m = event.upserted;
+      if (m == null) continue;
       await local.upsert(m);
       MessageEntity? reply;
       if (m.replyToId != null) {
@@ -332,6 +335,22 @@ class ChatRepositoryImpl implements ChatRepository {
       );
     }
   }
+
+  @override
+  Stream<String> watchMessageDeletes(String conversationId) async* {
+    // Используем тот же канал, что и watchMessages, но фильтруем только
+    // delete-события. Каналы получаются разные (broadcast streams), это ок.
+    await for (final MessageStreamEvent event
+        in remote.watchMessages(conversationId)) {
+      final String? id = event.deletedId;
+      if (id == null) continue;
+      await local.delete(id);
+      yield id;
+    }
+  }
+
+  @override
+  Future<int> sweepExpiredMessages() => remote.sweepExpiredMessages();
 
   @override
   Stream<ReactionDelta> watchReactions() async* {

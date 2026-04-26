@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -127,6 +129,9 @@ class ChatState {
 class ChatController extends FamilyAsyncNotifier<ChatState, String> {
   static const int _pageSize = 30;
 
+  Timer? _expirySweepTimer;
+  Timer? _expiryUiTickTimer;
+
   @override
   Future<ChatState> build(String conversationId) async {
     final ObserveMessages observe =
@@ -141,6 +146,38 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
         repo.watchReactions().listen(_onReactionDelta);
     ref.onDispose(reactionSub.cancel);
 
+    // Подписка на физическое удаление сообщений (sweep исчезающих).
+    final deleteSub = repo
+        .watchMessageDeletes(conversationId)
+        .listen(_onMessageDeleted);
+    ref.onDispose(deleteSub.cancel);
+
+    // Серверный sweep: тикаем каждые 15 секунд, пока чат открыт, чтобы
+    // исчезающие сообщения удалялись без ожидания минутного pg_cron.
+    _expirySweepTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) {
+        // ignore: discarded_futures
+        repo.sweepExpiredMessages();
+      },
+    );
+    ref.onDispose(() {
+      _expirySweepTimer?.cancel();
+      _expirySweepTimer = null;
+    });
+
+    // UI-тик: раз в секунду пересобираем стейт, если есть истёкшие сообщения,
+    // которых сервер ещё не успел удалить — клиент моментально скрывает их
+    // через геттер isExpired.
+    _expiryUiTickTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _maybeTickExpiry(),
+    );
+    ref.onDispose(() {
+      _expiryUiTickTimer?.cancel();
+      _expiryUiTickTimer = null;
+    });
+
     final GetMessages uc =
         await ref.watch(getMessagesUseCaseProvider.future);
     final List<MessageEntity> page = await uc.call(
@@ -151,6 +188,29 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
       messages: sorted,
       hasMore: page.length == _pageSize,
     );
+  }
+
+  void _onMessageDeleted(String id) {
+    final ChatState? current = state.valueOrNull;
+    if (current == null) return;
+    final List<MessageEntity> next = current.messages
+        .where((MessageEntity m) => m.id != id)
+        .toList();
+    if (next.length == current.messages.length) return;
+    state = AsyncData<ChatState>(current.copyWith(messages: next));
+  }
+
+  void _maybeTickExpiry() {
+    final ChatState? current = state.valueOrNull;
+    if (current == null) return;
+    final DateTime now = DateTime.now();
+    final bool hasNearExpiry = current.messages.any((MessageEntity m) {
+      final DateTime? exp = m.expiresAt;
+      return exp != null && exp.isBefore(now.add(const Duration(seconds: 2)));
+    });
+    if (!hasNearExpiry) return;
+    // Триггерим перестройку UI, чтобы isExpired-фильтр сработал.
+    state = AsyncData<ChatState>(current.copyWith());
   }
 
   void _onIncoming(MessageEntity message) {
