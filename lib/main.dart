@@ -11,9 +11,16 @@ import 'app.dart';
 import 'config/supabase_config.dart';
 import 'core/services/local_notification_service.dart';
 
+/// Установлен после `runApp(CchrMessangerApp)`. После этого момента
+/// необработанные ошибки в рантайме (отказ в правах, сетевые сбои и
+/// сторонние плагины) НЕ должны подменять всё приложение `_BootErrorApp` —
+/// иначе одна асинхронная ошибка выкидывает пользователя на «Boot error».
+bool _appBooted = false;
+
 Future<void> main() async {
   // Любая необработанная ошибка инициализации не должна оставлять
-  // экран белым — показываем диагностику прямо в приложении.
+  // экран белым — показываем диагностику прямо в приложении. После того
+  // как приложение поднялось, ошибки только логируем.
   await runZonedGuarded<Future<void>>(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
@@ -54,8 +61,13 @@ Future<void> main() async {
     }
 
     runApp(const ProviderScope(child: CchrMessangerApp()));
+    _appBooted = true;
   }, (Object error, StackTrace stackTrace) {
     debugPrint('Uncaught zone error: $error\n$stackTrace');
+    if (_appBooted) {
+      // Приложение уже работает — не убиваем UI рантайм-ошибкой.
+      return;
+    }
     runApp(_BootErrorApp(
       title: 'Boot error',
       error: error,
