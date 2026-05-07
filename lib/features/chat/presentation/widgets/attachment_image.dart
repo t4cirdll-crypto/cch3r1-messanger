@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gal/gal.dart';
 
 import '../../domain/entities/message_entity.dart';
 import '../providers/chat_providers.dart';
@@ -85,19 +87,80 @@ class AttachmentImage extends ConsumerWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
-        builder: (BuildContext c) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.black,
-            iconTheme: const IconThemeData(color: Colors.white),
+        builder: (BuildContext c) => _FullscreenImage(url: url),
+      ),
+    );
+  }
+}
+
+/// Полноэкранный просмотрщик с кнопкой «Скачать в галерею».
+class _FullscreenImage extends StatefulWidget {
+  const _FullscreenImage({required this.url});
+  final String url;
+
+  @override
+  State<_FullscreenImage> createState() => _FullscreenImageState();
+}
+
+class _FullscreenImageState extends State<_FullscreenImage> {
+  bool _saving = false;
+
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      final bool hasAccess = await Gal.hasAccess(toAlbum: false);
+      if (!hasAccess) {
+        final bool granted = await Gal.requestAccess(toAlbum: false);
+        if (!granted) {
+          _snack('Нет разрешения на доступ к галерее');
+          return;
+        }
+      }
+      final file = await DefaultCacheManager().getSingleFile(widget.url);
+      await Gal.putImage(file.path, album: 'cch3r1');
+      _snack('Сохранено в галерею');
+    } catch (e) {
+      _snack('Не удалось сохранить: $e');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _snack(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Сохранить в галерею',
+            onPressed: _saving ? null : _save,
+            icon: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Icon(Icons.download_outlined, color: Colors.white),
           ),
-          body: Center(
-            child: InteractiveViewer(
-              minScale: 0.5,
-              maxScale: 4,
-              child: CachedNetworkImage(imageUrl: url),
-            ),
-          ),
+        ],
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4,
+          child: CachedNetworkImage(imageUrl: widget.url),
         ),
       ),
     );

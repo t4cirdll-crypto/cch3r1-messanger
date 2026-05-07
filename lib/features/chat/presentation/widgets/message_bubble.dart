@@ -37,16 +37,20 @@ class MessageBubble extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
 
+    // Входящие сообщения окрашиваем в `secondaryContainer`, чтобы они
+    // визуально отделялись от фона чата (в Material 3 `surface` и
+    // `surfaceContainerHighest` выглядят почти одинаково в светлой теме —
+    // bubble «сливался» с экраном).
     final Color bg = highlight
         ? scheme.tertiaryContainer
         : isMine
             ? scheme.primary
-            : scheme.surfaceContainerHighest;
+            : scheme.secondaryContainer;
     final Color fg = highlight
         ? scheme.onTertiaryContainer
         : isMine
             ? scheme.onPrimary
-            : scheme.onSurface;
+            : scheme.onSecondaryContainer;
     final BorderRadius radius = BorderRadius.only(
       topLeft: const Radius.circular(16),
       topRight: const Radius.circular(16),
