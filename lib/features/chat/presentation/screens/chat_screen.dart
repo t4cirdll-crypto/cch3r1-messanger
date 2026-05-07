@@ -42,6 +42,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _hasText = false;
   bool _uploading = false;
+  bool _showScrollToBottom = false;
   MessageEntity? _replyTo;
   String? _highlightId;
   VoiceRecorderState _voiceState = const VoiceRecorderState(
@@ -83,6 +84,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           .read(chatControllerProvider(widget.conversationId).notifier)
           .loadMore();
     }
+    // Список перевёрнут (`reverse: true`), поэтому «низ» — это `0`.
+    final bool nextShow = _scrollController.position.pixels > 240;
+    if (nextShow != _showScrollToBottom && mounted) {
+      setState(() => _showScrollToBottom = nextShow);
+    }
+  }
+
+  void _scrollToBottom() {
+    if (!_scrollController.hasClients) return;
+    HapticFeedback.selectionClick();
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -103,6 +119,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final String? replyToId = _replyTo?.id;
     _controller.clear();
     setState(() => _replyTo = null);
+    HapticFeedback.lightImpact();
     await ref
         .read(chatControllerProvider(widget.conversationId).notifier)
         .sendMessage(text, replyToId: replyToId);
@@ -363,77 +380,112 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: <Widget>[
           _PinnedBanner(conversationId: widget.conversationId),
           Expanded(
-            child: state.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (Object err, StackTrace st) =>
-                  Center(child: Text('$err')),
-              data: (ChatState data) {
-                // Скрываем self-destruct сообщения, у которых истёк срок,
-                // даже если сервер ещё не успел их физически удалить.
-                final List<MessageEntity> visible = data.messages
-                    .where((MessageEntity m) => !m.isExpired)
-                    .toList();
-                if (visible.isEmpty) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Text('Сообщений пока нет. Напишите первое!'),
-                    ),
-                  );
-                }
-                return ListView.builder(
-                  controller: _scrollController,
-                  reverse: true,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: visible.length + (data.isLoadingMore ? 1 : 0),
-                  itemBuilder: (BuildContext _, int index) {
-                    if (data.isLoadingMore && index == visible.length) {
-                      return const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Center(child: CircularProgressIndicator()),
+            child: Stack(
+              children: <Widget>[
+                state.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (Object err, StackTrace st) =>
+                      Center(child: Text('$err')),
+                  data: (ChatState data) {
+                    // Скрываем self-destruct сообщения, у которых истёк срок,
+                    // даже если сервер ещё не успел их физически удалить.
+                    final List<MessageEntity> visible = data.messages
+                        .where((MessageEntity m) => !m.isExpired)
+                        .toList();
+                    if (visible.isEmpty) {
+                      return _ChatEmptyState(
+                        title: liveConv?.isGroup ?? false
+                            ? 'Здесь пока тихо'
+                            : 'Начните разговор',
+                        subtitle:
+                            'Сообщений ещё нет — отправьте первое или прикрепите файл.',
                       );
                     }
-                    final int i = visible.length - 1 - index;
-                    final MessageEntity m = visible[i];
-                    final MessageEntity? prev = i > 0 ? visible[i - 1] : null;
-                    final bool showHeader = prev == null ||
-                        !_sameDay(prev.createdAt, m.createdAt);
-                    final bool isMine = m.isMine(uid);
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        if (showHeader)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Center(
-                              child: Text(
-                                DateFormatter.conversationTimestamp(
-                                  m.createdAt,
+                    return ListView.builder(
+                      controller: _scrollController,
+                      reverse: true,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount:
+                          visible.length + (data.isLoadingMore ? 1 : 0),
+                      itemBuilder: (BuildContext _, int index) {
+                        if (data.isLoadingMore && index == visible.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(12),
+                            child:
+                                Center(child: CircularProgressIndicator()),
+                          );
+                        }
+                        final int i = visible.length - 1 - index;
+                        final MessageEntity m = visible[i];
+                        final MessageEntity? prev =
+                            i > 0 ? visible[i - 1] : null;
+                        final bool showHeader = prev == null ||
+                            !_sameDay(prev.createdAt, m.createdAt);
+                        final bool isMine = m.isMine(uid);
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            if (showHeader)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                child: Center(
+                                  child: Text(
+                                    DateFormatter.conversationTimestamp(
+                                      m.createdAt,
+                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall,
+                                  ),
                                 ),
-                                style: Theme.of(context).textTheme.bodySmall,
                               ),
+                            MessageBubble(
+                              message: m,
+                              isMine: isMine,
+                              showRead: isMine,
+                              currentUserId: uid,
+                              highlight: _highlightId == m.id,
+                              onLongPress: () =>
+                                  _openMessageActions(m, isMine),
+                              onSwipeReply: m.isDeleted
+                                  ? null
+                                  : () => setState(() => _replyTo = m),
+                              onReactionTap: (String emoji) {
+                                HapticFeedback.selectionClick();
+                                ref
+                                    .read(chatControllerProvider(
+                                            widget.conversationId)
+                                        .notifier)
+                                    .toggleReaction(m.id, emoji);
+                              },
                             ),
-                          ),
-                        MessageBubble(
-                          message: m,
-                          isMine: isMine,
-                          showRead: isMine,
-                          currentUserId: uid,
-                          highlight: _highlightId == m.id,
-                          onLongPress: () => _openMessageActions(m, isMine),
-                          onReactionTap: (String emoji) {
-                            ref
-                                .read(chatControllerProvider(
-                                        widget.conversationId)
-                                    .notifier)
-                                .toggleReaction(m.id, emoji);
-                          },
-                        ),
-                      ],
+                          ],
+                        );
+                      },
                     );
                   },
-                );
-              },
+                ),
+                Positioned(
+                  right: 12,
+                  bottom: 12,
+                  child: AnimatedSlide(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    offset: _showScrollToBottom
+                        ? Offset.zero
+                        : const Offset(0, 1.4),
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 180),
+                      opacity: _showScrollToBottom ? 1 : 0,
+                      child: _ScrollToBottomFab(
+                        onTap: _scrollToBottom,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           if (_uploading) const LinearProgressIndicator(minHeight: 2),
@@ -858,6 +910,93 @@ class _PinnedBanner extends ConsumerWidget {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScrollToBottomFab extends StatelessWidget {
+  const _ScrollToBottomFab({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.surfaceContainerHighest,
+      shape: const CircleBorder(),
+      elevation: 4,
+      shadowColor: cs.shadow.withValues(alpha: 0.15),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: cs.onSurface,
+            size: 24,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatEmptyState extends StatelessWidget {
+  const _ChatEmptyState({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: <Color>[
+                    cs.primaryContainer,
+                    cs.tertiaryContainer,
+                  ],
+                ),
+              ),
+              child: Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 44,
+                color: cs.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
         ),
       ),
     );
