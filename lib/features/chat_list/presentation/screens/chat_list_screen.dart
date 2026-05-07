@@ -76,18 +76,7 @@ class ChatListScreen extends ConsumerWidget {
               child: state.when(
                 data: (List<ConversationEntity> list) {
                   if (list.isEmpty) {
-                    return ListView(
-                      children: const <Widget>[
-                        SizedBox(height: 120),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 32),
-                          child: Text(
-                            AppStrings.chatsEmpty,
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    );
+                    return const _ChatListEmpty();
                   }
                   return ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -181,6 +170,75 @@ class _NewChatFab extends StatelessWidget {
         icon: Icon(Icons.edit),
         label: Text(AppStrings.newChat),
       ),
+    );
+  }
+}
+
+/// Красивый empty-state для пустого списка чатов.
+class _ChatListEmpty extends StatelessWidget {
+  const _ChatListEmpty();
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: <Widget>[
+        const SizedBox(height: 96),
+        Center(
+          child: Container(
+            width: 112,
+            height: 112,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  cs.primaryContainer,
+                  cs.secondaryContainer,
+                ],
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: cs.primary.withValues(alpha: 0.18),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.forum_outlined,
+              size: 56,
+              color: cs.onPrimaryContainer,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Text(
+            AppStrings.chatsEmpty,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: cs.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Text(
+            'Нажмите кнопку «Написать», чтобы начать новый чат или создать группу.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

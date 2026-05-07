@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/utils/date_format.dart';
@@ -22,6 +23,7 @@ class MessageBubble extends StatelessWidget {
     this.highlight = false,
     this.onLongPress,
     this.onReactionTap,
+    this.onSwipeReply,
   });
 
   final MessageEntity message;
@@ -31,6 +33,7 @@ class MessageBubble extends StatelessWidget {
   final bool highlight;
   final VoidCallback? onLongPress;
   final void Function(String emoji)? onReactionTap;
+  final VoidCallback? onSwipeReply;
 
   @override
   Widget build(BuildContext context) {
@@ -60,16 +63,20 @@ class MessageBubble extends StatelessWidget {
 
     final double maxWidth = MediaQuery.of(context).size.width * 0.78;
 
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: GestureDetector(
-          onLongPress: onLongPress,
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-            child: Column(
+    return _SwipeToReply(
+      enabled: onSwipeReply != null,
+      isMine: isMine,
+      onTriggered: onSwipeReply,
+      child: Align(
+        alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: GestureDetector(
+            onLongPress: onLongPress,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+              child: Column(
               crossAxisAlignment:
                   isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -222,6 +229,7 @@ class MessageBubble extends StatelessWidget {
               ],
             ),
           ),
+        ),
         ),
       ),
     );
@@ -379,6 +387,150 @@ class _ExpiryBadgeState extends State<_ExpiryBadge> {
           style: base?.copyWith(color: widget.color.withValues(alpha: 0.75)),
         ),
       ],
+    );
+  }
+}
+
+/// Жест свайпа влево/вправо для ответа на сообщение.
+///
+/// Тянем bubble в сторону «своего» края: исходящие — влево, входящие — вправо.
+/// На пороге `_threshold` пикселей срабатывает haptic feedback и колбэк.
+class _SwipeToReply extends StatefulWidget {
+  const _SwipeToReply({
+    required this.child,
+    required this.enabled,
+    required this.isMine,
+    this.onTriggered,
+  });
+
+  final Widget child;
+  final bool enabled;
+  final bool isMine;
+  final VoidCallback? onTriggered;
+
+  @override
+  State<_SwipeToReply> createState() => _SwipeToReplyState();
+}
+
+class _SwipeToReplyState extends State<_SwipeToReply>
+    with SingleTickerProviderStateMixin {
+  static const double _maxOffset = 64;
+  static const double _threshold = 56;
+
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+  );
+  double _drag = 0;
+  bool _triggered = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onUpdate(DragUpdateDetails d) {
+    if (!widget.enabled) return;
+    final double next = (_drag + d.delta.dx).clamp(-_maxOffset, _maxOffset);
+    // Разрешаем только в одну сторону:
+    //   входящие — свайп вправо (положительный dx);
+    //   исходящие — свайп влево (отрицательный dx).
+    final double constrained =
+        widget.isMine ? next.clamp(-_maxOffset, 0.0) : next.clamp(0.0, _maxOffset);
+    if (!_triggered && constrained.abs() >= _threshold) {
+      _triggered = true;
+      HapticFeedback.selectionClick();
+    }
+    setState(() => _drag = constrained);
+  }
+
+  void _onEnd(DragEndDetails _) {
+    if (!widget.enabled) {
+      setState(() => _drag = 0);
+      _triggered = false;
+      return;
+    }
+    if (_triggered) {
+      widget.onTriggered?.call();
+    }
+    _animateBack();
+  }
+
+  void _animateBack() {
+    final double from = _drag;
+    final Animation<double> tween =
+        Tween<double>(begin: from, end: 0).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    ));
+    void listener() {
+      setState(() => _drag = tween.value);
+    }
+
+    tween.addListener(listener);
+    _controller.forward(from: 0).whenComplete(() {
+      tween.removeListener(listener);
+      _triggered = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final double progress = (_drag.abs() / _threshold).clamp(0.0, 1.0);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragUpdate: widget.enabled ? _onUpdate : null,
+      onHorizontalDragEnd: widget.enabled ? _onEnd : null,
+      onHorizontalDragCancel: widget.enabled
+          ? () {
+              if (_drag != 0) _animateBack();
+            }
+          : null,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: widget.isMine ? Alignment.centerRight : Alignment.centerLeft,
+        children: <Widget>[
+          if (widget.enabled && progress > 0)
+            Positioned.fill(
+              child: Align(
+                alignment: widget.isMine
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Opacity(
+                    opacity: progress,
+                    child: Transform.scale(
+                      scale: 0.6 + 0.4 * progress,
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: cs.primaryContainer,
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.reply_rounded,
+                          size: 20,
+                          color: cs.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Transform.translate(
+            offset: Offset(_drag, 0),
+            child: widget.child,
+          ),
+        ],
+      ),
     );
   }
 }
