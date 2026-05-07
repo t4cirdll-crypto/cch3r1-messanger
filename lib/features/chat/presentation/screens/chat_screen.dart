@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +7,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/providers/supabase_providers.dart';
 import '../../../../core/services/notifications_listener.dart';
 import '../../../../core/utils/date_format.dart';
+import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../chat_list/domain/entities/conversation_entity.dart';
 import '../../../chat_list/presentation/providers/chat_list_providers.dart';
@@ -738,15 +738,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     return Row(
       children: <Widget>[
-        CircleAvatar(
+        UserAvatar(
           radius: 18,
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          backgroundImage: peer.avatarUrl != null
-              ? CachedNetworkImageProvider(peer.avatarUrl!)
-              : null,
-          child: peer.avatarUrl == null
-              ? Text(peer.effectiveName.substring(0, 1).toUpperCase())
-              : null,
+          initial: peer.effectiveName.isNotEmpty
+              ? peer.effectiveName.substring(0, 1).toUpperCase()
+              : '?',
+          avatarUrl: peer.avatarUrl,
         ),
         const SizedBox(width: 12),
         Expanded(

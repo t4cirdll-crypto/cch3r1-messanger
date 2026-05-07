@@ -16,8 +16,6 @@ Future<void> main() async {
   await runZonedGuarded<Future<void>>(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
-    // Запрещаем делать скриншоты/запись экрана приложения
-    // (в дополнение к FLAG_SECURE на Android).
     await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,

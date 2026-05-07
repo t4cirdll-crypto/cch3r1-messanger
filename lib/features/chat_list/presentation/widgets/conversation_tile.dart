@@ -1,7 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/date_format.dart';
+import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../chat/domain/entities/message_entity.dart';
 import '../../domain/entities/conversation_entity.dart';
@@ -137,11 +137,11 @@ class _Avatar extends StatelessWidget {
       );
     }
     if (conversation.isGroup) {
-      return CircleAvatar(
+      return UserAvatar(
         radius: 26,
+        initial: _initials(conversation.effectiveTitle),
         backgroundColor: theme.colorScheme.secondaryContainer,
         foregroundColor: theme.colorScheme.onSecondaryContainer,
-        child: Text(_initials(conversation.effectiveTitle)),
       );
     }
     final ProfileEntity? peer = conversation.peer;
@@ -149,14 +149,10 @@ class _Avatar extends StatelessWidget {
 
     return Stack(
       children: <Widget>[
-        CircleAvatar(
+        UserAvatar(
           radius: 26,
-          backgroundColor: theme.colorScheme.primaryContainer,
-          foregroundColor: theme.colorScheme.onPrimaryContainer,
-          backgroundImage: peer?.avatarUrl != null
-              ? CachedNetworkImageProvider(peer!.avatarUrl!)
-              : null,
-          child: peer?.avatarUrl == null ? Text(initial) : null,
+          initial: initial,
+          avatarUrl: peer?.avatarUrl,
         ),
         if (peer?.isOnline ?? false)
           Positioned(
