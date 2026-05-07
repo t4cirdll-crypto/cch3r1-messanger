@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
 
 import '../../domain/entities/message_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
@@ -219,9 +220,28 @@ class AttachmentPicker {
   }
 
   /// Запрос микрофонного разрешения. Возвращает true, если предоставлено.
+  ///
+  /// На iOS пакет `permission_handler` без правок Podfile (флаг
+  /// `PERMISSION_MICROPHONE=1`) умеет молча возвращать `denied`, не показав
+  /// системный prompt — а если prompt не показан хотя бы раз, пользователь
+  /// не увидит переключатель в Настройках и не сможет дать доступ вручную.
+  /// Поэтому сначала используем нативный путь `record.hasPermission()`,
+  /// который дергает `AVAudioApplication.requestRecordPermission` (iOS 17+)
+  /// или `AVAudioSession.requestRecordPermission` (старее) и гарантированно
+  /// показывает системный prompt при первом запуске.
   static Future<bool> ensureMicPermission() async {
     if (kIsWeb) return true;
-    final PermissionStatus status = await Permission.microphone.request();
-    return status.isGranted;
+    try {
+      final bool granted = await AudioRecorder().hasPermission();
+      if (granted) return true;
+    } catch (_) {
+      // Игнорируем — попробуем permission_handler как fallback.
+    }
+    try {
+      final PermissionStatus status = await Permission.microphone.request();
+      return status.isGranted;
+    } on PlatformException {
+      return false;
+    }
   }
 }
