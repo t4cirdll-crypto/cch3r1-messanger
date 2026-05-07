@@ -140,6 +140,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         return;
     }
     if (!mounted) return;
+    if (result.permissionDenied) {
+      _toast(result.errorMessage ?? 'Нет доступа');
+      return;
+    }
+    if (result.errorMessage != null) {
+      _toast(result.errorMessage!);
+      return;
+    }
     if (result.tooLarge) {
       _toast('Файл больше 25 МБ — выберите меньший');
       return;
