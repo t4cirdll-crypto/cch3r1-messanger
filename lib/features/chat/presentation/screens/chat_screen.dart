@@ -117,12 +117,58 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final String text = _controller.text;
     if (text.trim().isEmpty) return;
     final String? replyToId = _replyTo?.id;
+    final MessageEntity? prevReply = _replyTo;
+    // Чистим поле и reply-preview оптимистично, чтобы UI ощущался отзывчивым.
+    // Если отправка свалится — текст и reply возвращаем обратно, чтобы юзер
+    // не терял ввод (один из багов #3 в задаче).
     _controller.clear();
     setState(() => _replyTo = null);
     HapticFeedback.lightImpact();
-    await ref
-        .read(chatControllerProvider(widget.conversationId).notifier)
-        .sendMessage(text, replyToId: replyToId);
+    try {
+      await ref
+          .read(chatControllerProvider(widget.conversationId).notifier)
+          .sendMessage(text, replyToId: replyToId);
+    } catch (e) {
+      if (!mounted) return;
+      _controller.text = text;
+      _controller.selection = TextSelection.collapsed(offset: text.length);
+      setState(() => _replyTo = prevReply);
+      _toast('Не удалось отправить: $e');
+    }
+  }
+
+  /// Прыжок к сообщению из баннера закреплённых: если оно загружено в текущей
+  /// странице — скроллим к нему, иначе подсвечиваем по id (а пагинация
+  /// дотащит его при следующем `loadMore`).
+  void _jumpToMessage(MessageEntity target) {
+    final ChatState? data = ref
+        .read(chatControllerProvider(widget.conversationId))
+        .valueOrNull;
+    if (data == null) return;
+    final List<MessageEntity> visible = data.messages
+        .where((MessageEntity m) => !m.isExpired)
+        .toList();
+    final int positionFromTop =
+        visible.indexWhere((MessageEntity m) => m.id == target.id);
+    setState(() => _highlightId = target.id);
+    Future<void>.delayed(const Duration(seconds: 2), () {
+      if (mounted && _highlightId == target.id) {
+        setState(() => _highlightId = null);
+      }
+    });
+    if (positionFromTop < 0 || !_scrollController.hasClients) return;
+    // Список перевёрнут: индекс в reverse-порядке.
+    final int reverseIndex = visible.length - 1 - positionFromTop;
+    // Пытаемся подскролить так, чтобы сообщение оказалось примерно по центру.
+    const double approxItemHeight = 84;
+    final double targetOffset = (reverseIndex * approxItemHeight)
+        .clamp(0.0, _scrollController.position.maxScrollExtent);
+    HapticFeedback.selectionClick();
+    _scrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   Future<void> _openAttachmentMenu() async {
@@ -378,7 +424,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
       body: Column(
         children: <Widget>[
-          _PinnedBanner(conversationId: widget.conversationId),
+          _PinnedBanner(
+            conversationId: widget.conversationId,
+            onJumpToMessage: _jumpToMessage,
+          ),
           Expanded(
             child: Stack(
               children: <Widget>[
@@ -850,46 +899,103 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 }
 
-class _PinnedBanner extends ConsumerWidget {
-  const _PinnedBanner({required this.conversationId});
+/// Баннер закреплённых сообщений: показывает все закреплённые сообщения
+/// с переключением по тапу (Telegram-style). Источник — отдельный
+/// `pinnedMessagesProvider`, чтобы баннер не зависел от пагинации `messages`
+/// и видел даже старые pin-нутые сообщения, которые ещё не подгружены.
+class _PinnedBanner extends ConsumerStatefulWidget {
+  const _PinnedBanner({
+    required this.conversationId,
+    required this.onJumpToMessage,
+  });
   final String conversationId;
+  final void Function(MessageEntity message) onJumpToMessage;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<ChatState> state =
-        ref.watch(chatControllerProvider(conversationId));
-    final List<MessageEntity> pinned = state.valueOrNull?.messages
-            .where((MessageEntity m) => m.isPinned && !m.isDeleted)
-            .toList() ??
-        const <MessageEntity>[];
+  ConsumerState<_PinnedBanner> createState() => _PinnedBannerState();
+}
+
+class _PinnedBannerState extends ConsumerState<_PinnedBanner> {
+  /// Сколько раз пользователь тапнул по баннеру. Реальный индекс
+  /// высчитывается по модулю длины списка — так сохраняется относительный
+  /// порядок просмотра, даже если пины добавляются/удаляются на лету.
+  int _tapCount = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    // Источник пинов — канонический список из repository, отсортированный
+    // по `pinnedAt ASC`. Падать back на `state.messages` нельзя: пин может
+    // быть вне первой страницы.
+    final AsyncValue<List<MessageEntity>> pinnedAsync =
+        ref.watch(pinnedMessagesProvider(widget.conversationId));
+    final List<MessageEntity> raw =
+        pinnedAsync.valueOrNull ?? const <MessageEntity>[];
+    final List<MessageEntity> pinned = raw
+        .where((MessageEntity m) => !m.isDeleted)
+        .toList(growable: false);
     if (pinned.isEmpty) return const SizedBox.shrink();
-    pinned.sort((MessageEntity a, MessageEntity b) =>
-        (b.pinnedAt ?? b.createdAt).compareTo(a.pinnedAt ?? a.createdAt));
-    final MessageEntity top = pinned.first;
+
+    // Самый свежий pin показываем первым; дальше — по убыванию `pinnedAt`.
+    final List<MessageEntity> ordered = List<MessageEntity>.of(pinned)
+      ..sort((MessageEntity a, MessageEntity b) =>
+          (b.pinnedAt ?? b.createdAt).compareTo(a.pinnedAt ?? a.createdAt));
+    final int idx = ordered.isEmpty ? 0 : (_tapCount % ordered.length);
+    final MessageEntity current = ordered[idx];
+    final int total = ordered.length;
     final ColorScheme cs = Theme.of(context).colorScheme;
+
     return Material(
       color: cs.surfaceContainerHigh,
       child: InkWell(
-        onTap: () {},
+        onTap: () {
+          if (total > 1) {
+            setState(() => _tapCount = _tapCount + 1);
+          }
+          // Прыжок к сообщению вне зависимости от количества: даже один pin
+          // должен открываться по тапу.
+          widget.onJumpToMessage(current);
+        },
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           child: Row(
             children: <Widget>[
-              Icon(Icons.push_pin, color: cs.primary, size: 18),
+              // Если pin-ов несколько, рисуем вертикальную «лестницу» —
+              // подсвечиваем сегмент, соответствующий текущему индексу.
+              if (total > 1)
+                _PinnedPositionIndicator(
+                  total: total,
+                  index: idx,
+                  color: cs.primary,
+                )
+              else
+                Icon(Icons.push_pin, color: cs.primary, size: 18),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      AppStrings.messagePinned,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: cs.primary,
-                            fontWeight: FontWeight.w700,
+                    Row(
+                      children: <Widget>[
+                        Flexible(
+                          child: Text(
+                            total > 1
+                                ? '${AppStrings.messagePinned} #${idx + 1}'
+                                : AppStrings.messagePinned,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: cs.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
+                        ),
+                      ],
                     ),
                     Text(
-                      previewMessageText(top),
+                      previewMessageText(current),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall,
@@ -897,11 +1003,11 @@ class _PinnedBanner extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (pinned.length > 1)
+              if (total > 1)
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
                   child: Text(
-                    '${pinned.length}',
+                    '${idx + 1}/$total',
                     style: Theme.of(context)
                         .textTheme
                         .labelSmall
@@ -911,6 +1017,50 @@ class _PinnedBanner extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Вертикальные сегменты-полоски слева от текста баннера; активный сегмент
+/// окрашен в primary, остальные — приглушённо. Помогает видеть, на каком
+/// именно из N pin-ов сейчас стоим.
+class _PinnedPositionIndicator extends StatelessWidget {
+  const _PinnedPositionIndicator({
+    required this.total,
+    required this.index,
+    required this.color,
+  });
+
+  final int total;
+  final int index;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    // Не больше 4 сегментов рисуем — иначе индикатор становится нечитаемым
+    // на маленьких экранах.
+    final int segments = total > 4 ? 4 : total;
+    final int active = total <= 4
+        ? index
+        : ((index * segments) ~/ total).clamp(0, segments - 1);
+    return SizedBox(
+      width: 3,
+      height: 36,
+      child: Column(
+        children: <Widget>[
+          for (int i = 0; i < segments; i++) ...<Widget>[
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: i == active ? color : color.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(1.5),
+                ),
+              ),
+            ),
+            if (i != segments - 1) const SizedBox(height: 2),
+          ],
+        ],
       ),
     );
   }

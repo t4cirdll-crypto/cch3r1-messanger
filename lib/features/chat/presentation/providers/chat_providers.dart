@@ -132,8 +132,23 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
   Timer? _expirySweepTimer;
   Timer? _expiryUiTickTimer;
 
+  /// Сообщения, прилетевшие через realtime до того, как `build()`
+  /// успел вернуть начальную страницу. Без буфера такие события
+  /// просто терялись (в `_onIncoming` `state.valueOrNull == null` →
+  /// ранний return), и пользователь не видел свежие сообщения, пока
+  /// не сделает refresh — баг #3 «Проблемы с получением сообщений».
+  final List<MessageEntity> _pendingIncoming = <MessageEntity>[];
+  bool _initialLoadComplete = false;
+
   @override
   Future<ChatState> build(String conversationId) async {
+    _pendingIncoming.clear();
+    _initialLoadComplete = false;
+    ref.onDispose(() {
+      _pendingIncoming.clear();
+      _initialLoadComplete = false;
+    });
+
     final ObserveMessages observe =
         await ref.watch(observeMessagesUseCaseProvider.future);
     final stream = observe.call(conversationId);
@@ -184,9 +199,44 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
       GetMessagesParams(conversationId: conversationId, limit: _pageSize),
     );
     final List<MessageEntity> sorted = page.reversed.toList();
+
+    // Сливаем буфер realtime-сообщений, накопившийся пока шёл fetch первой
+    // страницы. Иначе свежие сообщения, прилетевшие в этот зазор, исчезали.
+    final List<MessageEntity> merged = List<MessageEntity>.of(sorted);
+    for (final MessageEntity m in _pendingIncoming) {
+      final int existing = merged.indexWhere(
+        (MessageEntity x) => x.id == m.id,
+      );
+      if (existing >= 0) {
+        merged[existing] = _mergeIncoming(merged[existing], m);
+      } else {
+        merged.add(m);
+      }
+    }
+    _pendingIncoming.clear();
+    _initialLoadComplete = true;
+    merged.sort((MessageEntity a, MessageEntity b) =>
+        a.createdAt.compareTo(b.createdAt));
+
     return ChatState(
-      messages: sorted,
+      messages: merged,
       hasMore: page.length == _pageSize,
+    );
+  }
+
+  /// При update-событии realtime-стрим может прислать `replyTo == null` /
+  /// `reactions == []`, потому что репозиторий гидратирует только из
+  /// локального кеша. Сохраняем уже посчитанные значения, чтобы баббл не
+  /// «терял» reply-превью или реакции при редактировании текста.
+  static MessageEntity _mergeIncoming(
+    MessageEntity prev,
+    MessageEntity incoming,
+  ) {
+    return incoming.copyWith(
+      replyTo: incoming.replyTo ?? prev.replyTo,
+      reactions: incoming.reactions.isEmpty
+          ? prev.reactions
+          : incoming.reactions,
     );
   }
 
@@ -215,24 +265,38 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
 
   void _onIncoming(MessageEntity message) {
     final ChatState? current = state.valueOrNull;
-    if (current == null) return;
+    if (current == null || !_initialLoadComplete) {
+      // Initial fetch ещё не завершился — буферизуем, чтобы потом смержить
+      // в `build()`. Так свежие realtime-события не теряются между
+      // подпиской и первой страницей.
+      final int existing = _pendingIncoming.indexWhere(
+        (MessageEntity m) => m.id == message.id,
+      );
+      if (existing >= 0) {
+        _pendingIncoming[existing] =
+            _mergeIncoming(_pendingIncoming[existing], message);
+      } else {
+        _pendingIncoming.add(message);
+      }
+      return;
+    }
     final List<MessageEntity> next = List<MessageEntity>.of(current.messages);
     final int existing = next.indexWhere(
       (MessageEntity m) => m.id == message.id,
     );
     if (existing >= 0) {
-      // Сохраняем уже агрегированные реакции локально, если сервер их не
-      // прислал (Realtime payload реакций не содержит).
-      final List<ReactionEntity> keep = message.reactions.isEmpty
-          ? next[existing].reactions
-          : message.reactions;
-      next[existing] = message.copyWith(reactions: keep);
+      next[existing] = _mergeIncoming(next[existing], message);
     } else {
       next.add(message);
       next.sort((MessageEntity a, MessageEntity b) =>
           a.createdAt.compareTo(b.createdAt));
     }
     state = AsyncData<ChatState>(current.copyWith(messages: next));
+
+    // Если прилетел/изменился pin — баннер должен это учесть.
+    if (message.isPinned) {
+      ref.invalidate(pinnedMessagesProvider(arg));
+    }
   }
 
   void _onReactionDelta(ReactionDelta delta) {
@@ -364,9 +428,15 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
       if (next.every((MessageEntity m) => m.id != sent.id)) {
         next.add(sent);
       }
-      state = AsyncData<ChatState>(current.copyWith(messages: next));
+      state = AsyncData<ChatState>(
+        current.copyWith(messages: next, clearError: true),
+      );
     } catch (e) {
+      // Не глотаем ошибку — UI должен показать toast и вернуть текст в инпут.
+      // Параллельно сохраняем последнюю ошибку в state для возможной баннер-
+      // диагностики, но обязательно прокидываем дальше.
       state = AsyncData<ChatState>(current.copyWith(error: e));
+      rethrow;
     }
   }
 
@@ -435,6 +505,10 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
       clearPinnedAt: !nextPinned,
     );
     state = AsyncData<ChatState>(current.copyWith(messages: next));
+    // Refetch the canonical pinned list — закреплённые сообщения могут
+    // оказаться вне текущей страницы, поэтому баннер не должен полагаться
+    // только на `state.messages`.
+    ref.invalidate(pinnedMessagesProvider(arg));
   }
 
   Future<void> toggleReaction(String messageId, String emoji) async {
@@ -474,4 +548,24 @@ final AsyncNotifierProviderFamily<ChatController, ChatState, String>
     chatControllerProvider =
     AsyncNotifierProvider.family<ChatController, ChatState, String>(
   ChatController.new,
+);
+
+/// Канонический список закреплённых сообщений диалога.
+///
+/// Не зависит от пагинации `chatControllerProvider` — закреплённое сообщение
+/// может оказаться значительно старше первой страницы и в `state.messages`
+/// его не будет. Поэтому тянем отдельным запросом через
+/// `getPinnedMessages` и инвалидaция вызывается из `togglePin`.
+final FutureProviderFamily<List<MessageEntity>, String>
+    pinnedMessagesProvider =
+    FutureProvider.family<List<MessageEntity>, String>(
+  (Ref ref, String conversationId) async {
+    final ChatRepository repo =
+        await ref.watch(chatRepositoryProvider.future);
+    final List<MessageEntity> list =
+        await repo.getPinnedMessages(conversationId);
+    list.sort((MessageEntity a, MessageEntity b) =>
+        (a.pinnedAt ?? a.createdAt).compareTo(b.pinnedAt ?? b.createdAt));
+    return list;
+  },
 );
