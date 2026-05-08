@@ -160,7 +160,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Список перевёрнут: индекс в reverse-порядке.
     final int reverseIndex = visible.length - 1 - positionFromTop;
     // Пытаемся подскролить так, чтобы сообщение оказалось примерно по центру.
-    final double approxItemHeight = 84;
+    const double approxItemHeight = 84;
     final double targetOffset = (reverseIndex * approxItemHeight)
         .clamp(0.0, _scrollController.position.maxScrollExtent);
     HapticFeedback.selectionClick();
