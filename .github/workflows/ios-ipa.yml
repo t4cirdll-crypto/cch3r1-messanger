@@ -75,6 +75,7 @@ jobs:
           ls -lh artifacts
 
       - name: Upload unsigned IPA
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: cch3r1-messanger-ios-unsigned-ipa
