@@ -23,6 +23,7 @@ Future<void> main() async {
   // как приложение поднялось, ошибки только логируем.
   await runZonedGuarded<Future<void>>(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    await initializeDateFormatting('ru');
 
     await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
       DeviceOrientation.portraitUp,
