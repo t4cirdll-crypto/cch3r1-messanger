@@ -97,10 +97,12 @@ class ConversationTile extends StatelessWidget {
             transitionBuilder: (Widget child, Animation<double> a) =>
                 ScaleTransition(scale: a, child: child),
             child: unread
-                ? _UnreadBadge(
+                ? UnconstrainedBox(
                     key: ValueKey<int>(conversation.unreadCount),
-                    count: conversation.unreadCount,
-                    muted: conversation.muted,
+                    child: _UnreadBadge(
+                      count: conversation.unreadCount,
+                      muted: conversation.muted,
+                    ),
                   )
                 : const SizedBox(key: ValueKey<String>('empty'), height: 18),
           ),
@@ -193,7 +195,7 @@ class _Avatar extends StatelessWidget {
 }
 
 class _UnreadBadge extends StatelessWidget {
-  const _UnreadBadge({super.key, required this.count, required this.muted});
+  const _UnreadBadge({required this.count, required this.muted});
 
   final int count;
   final bool muted;

@@ -481,7 +481,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                     const EdgeInsets.symmetric(vertical: 8),
                                 child: Center(
                                   child: Text(
-                                    DateFormatter.conversationTimestamp(
+                                    DateFormatter.messageDayHeader(
                                       m.createdAt,
                                     ),
                                     style: Theme.of(context)
@@ -594,8 +594,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  bool _sameDay(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
+  bool _sameDay(DateTime a, DateTime b) {
+    final DateTime localA = a.toLocal();
+    final DateTime localB = b.toLocal();
+    return localA.year == localB.year &&
+        localA.month == localB.month &&
+        localA.day == localB.day;
+  }
 
   /// Возвращает свежие данные о диалоге из chatListController, если есть;
   /// иначе fallback на переданный в виджет `conversation`.

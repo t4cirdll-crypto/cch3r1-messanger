@@ -91,6 +91,7 @@ class _SearchUserScreenState extends ConsumerState<SearchUserScreen> {
                   itemBuilder: (BuildContext _, int i) {
                     final ProfileEntity p = users[i];
                     return ListTile(
+                      onTap: () => _startConversation(p),
                       leading: CircleAvatar(
                         radius: 24,
                         backgroundColor:
@@ -106,9 +107,10 @@ class _SearchUserScreenState extends ConsumerState<SearchUserScreen> {
                       ),
                       title: Text(p.effectiveName),
                       subtitle: Text('@${p.username}'),
-                      trailing: FilledButton.tonal(
+                      trailing: IconButton(
+                        icon: const Icon(Icons.chat_bubble_outline),
+                        tooltip: AppStrings.startChat,
                         onPressed: () => _startConversation(p),
-                        child: const Text(AppStrings.startChat),
                       ),
                     );
                   },
