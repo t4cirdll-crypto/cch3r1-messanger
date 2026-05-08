@@ -195,7 +195,7 @@ class _Avatar extends StatelessWidget {
 }
 
 class _UnreadBadge extends StatelessWidget {
-  const _UnreadBadge({super.key, required this.count, required this.muted});
+  const _UnreadBadge({required this.count, required this.muted});
 
   final int count;
   final bool muted;
