@@ -22,10 +22,21 @@ class ProfileEntity {
   final DateTime? lastSeen;
   final DateTime? createdAt;
 
-  String get effectiveName =>
-      (displayName != null && displayName!.trim().isNotEmpty)
-          ? displayName!
-          : username;
+  String get effectiveName {
+    final String? name = displayName?.trim();
+    if (_isPyatochki(name)) return 'Пяточки';
+    return name != null && name.isNotEmpty ? name : username;
+  }
+
+  bool _isPyatochki(String? name) {
+    final String normalizedUsername = username.trim().toLowerCase();
+    final String normalizedName = (name ?? '').trim().toLowerCase();
+    return normalizedUsername == 'pyatocki' ||
+        normalizedUsername == 'pyatochki' ||
+        normalizedName == 'пятокчи' ||
+        normalizedName == 'пяточчи' ||
+        normalizedName == 'пяточки';
+  }
 
   ProfileEntity copyWith({
     String? id,
