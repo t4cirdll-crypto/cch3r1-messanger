@@ -97,10 +97,12 @@ class ConversationTile extends StatelessWidget {
             transitionBuilder: (Widget child, Animation<double> a) =>
                 ScaleTransition(scale: a, child: child),
             child: unread
-                ? _UnreadBadge(
+                ? UnconstrainedBox(
                     key: ValueKey<int>(conversation.unreadCount),
-                    count: conversation.unreadCount,
-                    muted: conversation.muted,
+                    child: _UnreadBadge(
+                      count: conversation.unreadCount,
+                      muted: conversation.muted,
+                    ),
                   )
                 : const SizedBox(key: ValueKey<String>('empty'), height: 18),
           ),
