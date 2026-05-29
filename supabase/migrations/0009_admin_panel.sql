@@ -104,7 +104,7 @@ begin
   select p.id, p.username, p.display_name, p.avatar_url, p.is_online,
          p.last_seen, p.created_at, p.bio, p.is_banned, p.banned_at,
          p.banned_reason,
-         u.email,
+         u.email::text,
          (select count(*) from public.messages m where m.sender_id = p.id) as message_count
     from public.profiles p
     left join auth.users u on u.id = p.id
@@ -140,9 +140,14 @@ begin
             'display_name', p.display_name,
             'role', cm.role
           )), '[]'::json)
-          from public.conversation_members cm
-          left join public.profiles p on p.id = cm.user_id
-          where cm.conversation_id = c.id) as members,
+          from (
+            select user_id, role from public.conversation_members where conversation_id = c.id
+            union
+            select id as user_id, 'owner' as role from public.profiles where (id = c.user1_id or id = c.user2_id) and c.kind = 'dm'
+            union
+            select id as user_id, 'owner' as role from public.profiles where id = c.created_by and c.kind = 'saved'
+          ) cm
+          left join public.profiles p on p.id = cm.user_id) as members,
          (select count(*) from public.messages m where m.conversation_id = c.id) as message_count
     from public.conversations c
    order by c.updated_at desc nulls last;

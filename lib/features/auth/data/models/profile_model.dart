@@ -19,6 +19,7 @@ class ProfileModel with _$ProfileModel {
     @Default(false) @JsonKey(name: 'is_online') bool isOnline,
     @JsonKey(name: 'last_seen') DateTime? lastSeen,
     @JsonKey(name: 'created_at') DateTime? createdAt,
+    String? rank,
   }) = _ProfileModel;
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) =>
@@ -38,6 +39,7 @@ class ProfileModel with _$ProfileModel {
         createdAt: row['created_at'] == null
             ? null
             : DateTime.fromMillisecondsSinceEpoch(row['created_at']! as int),
+        rank: row['rank'] as String?,
       );
 
   Map<String, Object?> toDb() => <String, Object?>{
@@ -49,6 +51,7 @@ class ProfileModel with _$ProfileModel {
         'is_online': isOnline ? 1 : 0,
         'last_seen': lastSeen?.millisecondsSinceEpoch,
         'created_at': createdAt?.millisecondsSinceEpoch,
+        'rank': rank,
       };
 
   ProfileEntity toEntity() => ProfileEntity(
@@ -60,5 +63,6 @@ class ProfileModel with _$ProfileModel {
         isOnline: isOnline,
         lastSeen: lastSeen,
         createdAt: createdAt,
+        rank: rank,
       );
 }

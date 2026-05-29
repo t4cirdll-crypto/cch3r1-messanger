@@ -10,7 +10,7 @@ class LocalDatabase {
   final Database _db;
   Database get db => _db;
 
-  static const int _version = 6;
+  static const int _version = 8;
   static const String _dbName = 'cchr_messanger.db';
 
   static Future<LocalDatabase> open() async {
@@ -145,6 +145,20 @@ class LocalDatabase {
         // Уже добавлена.
       }
     }
+    if (oldVersion < 7) {
+      try {
+        await db.execute('ALTER TABLE profiles ADD COLUMN rank TEXT;');
+      } on DatabaseException {
+        // Уже добавлена.
+      }
+    }
+    if (oldVersion < 8) {
+      try {
+        await db.execute('ALTER TABLE conversations ADD COLUMN peer_rank TEXT;');
+      } on DatabaseException {
+        // Уже добавлена.
+      }
+    }
   }
 
   static Future<void> _onCreate(Database db, int version) async {
@@ -157,7 +171,8 @@ class LocalDatabase {
         avatar_url TEXT,
         is_online INTEGER NOT NULL DEFAULT 0,
         last_seen INTEGER,
-        created_at INTEGER
+        created_at INTEGER,
+        rank TEXT
       );
     ''');
     await db.execute('''
@@ -172,6 +187,7 @@ class LocalDatabase {
         peer_avatar_url TEXT,
         peer_is_online INTEGER NOT NULL DEFAULT 0,
         peer_last_seen INTEGER,
+        peer_rank TEXT,
         last_message_id TEXT,
         last_message_content TEXT,
         last_message_sender_id TEXT,

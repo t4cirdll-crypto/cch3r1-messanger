@@ -6,10 +6,12 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/providers/supabase_providers.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
+import '../../../profile/presentation/widgets/user_profile_sheet.dart';
 import '../../../search_user/presentation/providers/search_providers.dart';
 import '../../domain/entities/conversation_entity.dart';
 import '../../domain/repositories/chat_list_repository.dart';
 import '../providers/chat_list_providers.dart';
+import '../../../../core/widgets/glass_widgets.dart';
 
 /// Экран «Информация о группе» — показывает участников группы,
 /// позволяет переименовать, добавить/удалить участников, выйти.
@@ -172,8 +174,8 @@ class _GroupInfoScreenState extends ConsumerState<GroupInfoScreen> {
         ref.watch(chatListControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Информация'),
+      appBar: const GlassmorphicAppBar(
+        title: Text('Информация'),
       ),
       body: state.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -191,61 +193,84 @@ class _GroupInfoScreenState extends ConsumerState<GroupInfoScreen> {
               (me.role == MemberRole.owner || me.role == MemberRole.admin);
 
           return ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             children: <Widget>[
-              const SizedBox(height: 16),
-              Center(
-                child: CircleAvatar(
-                  radius: 48,
-                  backgroundColor: theme.colorScheme.secondaryContainer,
-                  child: Text(
-                    conv.effectiveTitle.isEmpty
-                        ? '?'
-                        : conv.effectiveTitle.substring(0, 1).toUpperCase(),
-                    style: theme.textTheme.headlineMedium,
+              // Group Details Card
+              GlassmorphicCard(
+                child: Column(
+                  children: <Widget>[
+                    Center(
+                      child: CircleAvatar(
+                        radius: 48,
+                        backgroundColor: theme.colorScheme.secondaryContainer,
+                        child: Text(
+                          conv.effectiveTitle.isEmpty
+                              ? '?'
+                              : conv.effectiveTitle.substring(0, 1).toUpperCase(),
+                          style: theme.textTheme.headlineMedium,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        conv.effectiveTitle,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      subtitle: Text(
+                        '${conv.members.length} участник(ов)',
+                        textAlign: TextAlign.center,
+                      ),
+                      trailing: canEdit
+                          ? IconButton(
+                              tooltip: 'Переименовать',
+                              icon: const Icon(Icons.edit),
+                              onPressed:
+                                  _busy ? null : () => _renameGroup(conv),
+                            )
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // Members List Card
+              GlassmorphicCard(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  children: <Widget>[
+                    if (canEdit)
+                      ListTile(
+                        leading: const Icon(Icons.person_add),
+                        title: const Text('Добавить участников'),
+                        onTap: _busy ? null : () => _addMembers(conv),
+                      ),
+                    if (canEdit) const Divider(),
+                    ...conv.members.map((ConversationMember m) => _MemberTile(
+                          member: m,
+                          isMe: m.profile.id == uid,
+                          canRemove: canEdit && m.profile.id != uid,
+                          onRemove: () => _removeMember(m.profile),
+                        )),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // Actions Card
+              GlassmorphicCard(
+                padding: EdgeInsets.zero,
+                child: ListTile(
+                  leading: Icon(Icons.exit_to_app, color: theme.colorScheme.error),
+                  title: Text(
+                    'Выйти из группы',
+                    style: TextStyle(color: theme.colorScheme.error),
                   ),
+                  onTap: _busy ? null : _leave,
                 ),
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                title: Text(
-                  conv.effectiveTitle,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleLarge,
-                ),
-                subtitle: Text(
-                  '${conv.members.length} участник(ов)',
-                  textAlign: TextAlign.center,
-                ),
-                trailing: canEdit
-                    ? IconButton(
-                        tooltip: 'Переименовать',
-                        icon: const Icon(Icons.edit),
-                        onPressed:
-                            _busy ? null : () => _renameGroup(conv),
-                      )
-                    : null,
-              ),
-              const Divider(),
-              if (canEdit)
-                ListTile(
-                  leading: const Icon(Icons.person_add),
-                  title: const Text('Добавить участников'),
-                  onTap: _busy ? null : () => _addMembers(conv),
-                ),
-              ...conv.members.map((ConversationMember m) => _MemberTile(
-                    member: m,
-                    isMe: m.profile.id == uid,
-                    canRemove: canEdit && m.profile.id != uid,
-                    onRemove: () => _removeMember(m.profile),
-                  )),
-              const Divider(),
-              ListTile(
-                leading: Icon(Icons.exit_to_app, color: theme.colorScheme.error),
-                title: Text(
-                  'Выйти из группы',
-                  style: TextStyle(color: theme.colorScheme.error),
-                ),
-                onTap: _busy ? null : _leave,
               ),
               const SizedBox(height: 24),
             ],
@@ -282,6 +307,7 @@ class _MemberTile extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ProfileEntity p = member.profile;
     return ListTile(
+      onTap: () => UserProfileSheet.show(context, p.id),
       leading: CircleAvatar(
         radius: 22,
         backgroundColor: theme.colorScheme.primaryContainer,

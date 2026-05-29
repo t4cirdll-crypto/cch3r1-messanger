@@ -22,10 +22,13 @@ final FutureProvider<bool> isAdminProvider = FutureProvider<bool>(
     final AdminRepository repo = ref.watch(adminRepositoryProvider);
     final bool serverAdmin = await repo.isAdmin();
     if (!serverAdmin) return false;
-    final String? expected = await repo.selfDeviceId();
-    if (expected == null || expected.isEmpty) return false;
-    final String current = await ref.watch(deviceIdProvider.future);
-    return current == expected;
+
+    // Сверяем device_id на клиенте для дополнительной защиты
+    final String? serverDevId = await repo.selfDeviceId();
+    if (serverDevId == null) return false;
+
+    final String localDevId = await ref.watch(deviceIdProvider.future);
+    return serverDevId == localDevId;
   },
 );
 

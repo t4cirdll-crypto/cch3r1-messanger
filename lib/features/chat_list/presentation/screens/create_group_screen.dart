@@ -79,12 +79,11 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
     }
     setState(() => _submitting = true);
     try {
-      final ConversationEntity conv = await ref
-          .read(chatListControllerProvider.notifier)
-          .createGroup(
-            title: title,
-            memberIds: _selected.keys.toList(),
-          );
+      final ConversationEntity conv =
+          await ref.read(chatListControllerProvider.notifier).createGroup(
+                title: title,
+                memberIds: _selected.keys.toList(),
+              );
       if (!mounted) return;
       context.pushReplacement('/chat/${conv.id}', extra: conv);
     } catch (e) {
@@ -171,10 +170,8 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
           ),
           Expanded(
             child: results.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
-              error: (Object err, StackTrace _) =>
-                  Center(child: Text('$err')),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (Object err, StackTrace _) => Center(child: Text('$err')),
               data: (List<ProfileEntity> users) {
                 if (users.isEmpty) {
                   return const Center(

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/providers/supabase_providers.dart';
 import '../../../../core/services/notifications_listener.dart';
+import '../../../../core/widgets/glass_widgets.dart';
 import '../../../../services/connection_service.dart';
 import '../../domain/entities/conversation_entity.dart';
 import '../providers/chat_list_providers.dart';
@@ -39,7 +40,7 @@ class ChatListScreen extends ConsumerWidget {
     ref.read(messageNotificationsListenerProvider).start();
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: GlassmorphicAppBar(
         title: const Text(AppStrings.chatsTitle),
         actions: <Widget>[
           IconButton(
@@ -164,11 +165,12 @@ class _NewChatFab extends StatelessWidget {
           ),
         ),
       ],
-      child: const FloatingActionButton.extended(
-        // PopupMenuButton перехватывает onPressed; FAB здесь визуально.
-        onPressed: null,
-        icon: Icon(Icons.edit),
-        label: Text(AppStrings.newChat),
+      child: IgnorePointer(
+        child: FloatingActionButton.extended(
+          onPressed: () {},
+          icon: const Icon(Icons.edit),
+          label: const Text(AppStrings.newChat),
+        ),
       ),
     );
   }

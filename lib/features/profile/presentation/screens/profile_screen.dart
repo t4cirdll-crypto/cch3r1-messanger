@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +14,9 @@ import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../domain/usecases/update_profile.dart';
 import '../providers/profile_providers.dart';
 
+import '../../../../core/widgets/glass_widgets.dart';
+import '../../../../core/widgets/user_avatar.dart';
+
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -27,6 +29,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final TextEditingController _bio = TextEditingController();
   bool _saving = false;
   bool _initialized = false;
+
+
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   /// Скрытый bootstrap: 5 быстрых тапов по версии открывают экран device id.
   int _versionTapCount = 0;
@@ -147,7 +156,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ThemeMode.system;
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.profileTitle)),
+      appBar: const GlassmorphicAppBar(title: Text(AppStrings.profileTitle)),
       body: profileState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (Object err, StackTrace _) => Center(child: Text('$err')),
@@ -159,127 +168,146 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: <Widget>[
-              Center(
-                child: Stack(
-                  alignment: Alignment.bottomRight,
+              // CARD 1: Profile Info & Avatar
+              GlassmorphicCard(
+                child: Column(
                   children: <Widget>[
-                    CircleAvatar(
-                      radius: 56,
-                      backgroundColor:
-                          Theme.of(context).colorScheme.primaryContainer,
-                      foregroundColor:
-                          Theme.of(context).colorScheme.onPrimaryContainer,
-                      backgroundImage: p.avatarUrl != null
-                          ? CachedNetworkImageProvider(p.avatarUrl!)
-                          : null,
-                      child: p.avatarUrl == null
-                          ? Text(
-                              p.effectiveName.substring(0, 1).toUpperCase(),
-                              style: const TextStyle(fontSize: 36),
-                            )
-                          : null,
+                    Center(
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: <Widget>[
+                          UserAvatar(
+                            radius: 56,
+                            initial: p.effectiveName.isNotEmpty
+                                ? p.effectiveName.substring(0, 1).toUpperCase()
+                                : '?',
+                            avatarUrl: p.avatarUrl,
+                          ),
+                          FloatingActionButton.small(
+                            heroTag: 'avatar-edit',
+                            onPressed: _saving ? null : _pickAvatar,
+                            child: const Icon(Icons.camera_alt_outlined),
+                          ),
+                        ],
+                      ),
                     ),
-                    FloatingActionButton.small(
-                      heroTag: 'avatar-edit',
-                      onPressed: _saving ? null : _pickAvatar,
-                      child: const Icon(Icons.camera_alt_outlined),
+                    const SizedBox(height: 24),
+                    TextField(
+                      readOnly: true,
+                      controller: TextEditingController(text: '@${p.username}'),
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.usernameLabel,
+                        prefixIcon: Icon(Icons.alternate_email),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _displayName,
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.displayNameLabel,
+                        prefixIcon: Icon(Icons.badge_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _bio,
+                      minLines: 2,
+                      maxLines: 4,
+                      maxLength: 200,
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.bioLabel,
+                        hintText: AppStrings.bioHint,
+                        prefixIcon: Icon(Icons.info_outline),
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _saving ? null : _save,
+                      icon: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2.4),
+                            )
+                          : const Icon(Icons.save_outlined),
+                      label: const Text(AppStrings.save),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-              TextField(
-                readOnly: true,
-                controller: TextEditingController(text: '@${p.username}'),
-                decoration: const InputDecoration(
-                  labelText: AppStrings.usernameLabel,
-                  prefixIcon: Icon(Icons.alternate_email),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _displayName,
-                decoration: const InputDecoration(
-                  labelText: AppStrings.displayNameLabel,
-                  prefixIcon: Icon(Icons.badge_outlined),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _bio,
-                minLines: 2,
-                maxLines: 4,
-                maxLength: 200,
-                decoration: const InputDecoration(
-                  labelText: AppStrings.bioLabel,
-                  hintText: AppStrings.bioHint,
-                  prefixIcon: Icon(Icons.info_outline),
-                  alignLabelWithHint: true,
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _saving ? null : _save,
-                icon: _saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2.4),
-                      )
-                    : const Icon(Icons.save_outlined),
-                label: const Text(AppStrings.save),
-              ),
-              const SizedBox(height: 32),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  AppStrings.settingsTheme,
-                  style:
-                      TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-              ),
-              const SizedBox(height: 4),
-              _ThemeOptionTile(
-                title: AppStrings.themeSystem,
-                icon: Icons.brightness_auto_outlined,
-                selected: currentTheme == ThemeMode.system,
-                onTap: () => _setThemeMode(ThemeMode.system),
-              ),
-              _ThemeOptionTile(
-                title: AppStrings.themeLight,
-                icon: Icons.light_mode_outlined,
-                selected: currentTheme == ThemeMode.light,
-                onTap: () => _setThemeMode(ThemeMode.light),
-              ),
-              _ThemeOptionTile(
-                title: AppStrings.themeDark,
-                icon: Icons.dark_mode_outlined,
-                selected: currentTheme == ThemeMode.dark,
-                onTap: () => _setThemeMode(ThemeMode.dark),
-              ),
-              const SizedBox(height: 24),
-              // Админ-секция: видна только если текущий юзер + device — админ.
-              Consumer(
-                builder: (BuildContext _, WidgetRef ref, Widget? __) {
-                  final AsyncValue<bool> isAdmin =
-                      ref.watch(isAdminProvider);
-                  if (isAdmin.valueOrNull != true) {
-                    return const SizedBox.shrink();
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: FilledButton.tonalIcon(
-                      icon: const Icon(Icons.shield_outlined),
-                      label: const Text('Открыть админку'),
-                      onPressed: () => context.push('/admin'),
+              const SizedBox(height: 20),
+
+
+
+              // CARD 3: Theme Selector
+              GlassmorphicCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                      child: Text(
+                        AppStrings.settingsTheme,
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
                     ),
-                  );
-                },
+                    const Divider(),
+                    _ThemeOptionTile(
+                      title: AppStrings.themeSystem,
+                      icon: Icons.brightness_auto_outlined,
+                      selected: currentTheme == ThemeMode.system,
+                      onTap: () => _setThemeMode(ThemeMode.system),
+                    ),
+                    _ThemeOptionTile(
+                      title: AppStrings.themeLight,
+                      icon: Icons.light_mode_outlined,
+                      selected: currentTheme == ThemeMode.light,
+                      onTap: () => _setThemeMode(ThemeMode.light),
+                    ),
+                    _ThemeOptionTile(
+                      title: AppStrings.themeDark,
+                      icon: Icons.dark_mode_outlined,
+                      selected: currentTheme == ThemeMode.dark,
+                      onTap: () => _setThemeMode(ThemeMode.dark),
+                    ),
+                  ],
+                ),
               ),
-              OutlinedButton.icon(
-                onPressed: _saving ? null : _signOut,
-                icon: const Icon(Icons.logout),
-                label: const Text(AppStrings.signOut),
+              const SizedBox(height: 20),
+
+              // CARD 4: Actions (Admin Panel, Logout)
+              GlassmorphicCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Consumer(
+                      builder: (BuildContext _, WidgetRef ref, Widget? __) {
+                        final AsyncValue<bool> isAdmin =
+                            ref.watch(isAdminProvider);
+                        if (isAdmin.valueOrNull != true) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: FilledButton.tonalIcon(
+                            icon: const Icon(Icons.shield_outlined),
+                            label: const Text('Открыть админку'),
+                            onPressed: () => context.push('/admin'),
+                          ),
+                        );
+                      },
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _saving ? null : _signOut,
+                      icon: const Icon(Icons.logout, color: Colors.red),
+                      label: const Text(AppStrings.signOut, style: TextStyle(color: Colors.red)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
               Center(

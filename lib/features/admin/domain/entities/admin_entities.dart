@@ -19,14 +19,13 @@ class AdminStats {
   final int messagesToday;
 
   factory AdminStats.fromJson(Map<String, dynamic> j) => AdminStats(
-        usersTotal: (j['users_total'] as num?)?.toInt() ?? 0,
-        usersBanned: (j['users_banned'] as num?)?.toInt() ?? 0,
-        usersOnline: (j['users_online'] as num?)?.toInt() ?? 0,
-        conversationsTotal:
-            (j['conversations_total'] as num?)?.toInt() ?? 0,
-        groupsTotal: (j['groups_total'] as num?)?.toInt() ?? 0,
-        messagesTotal: (j['messages_total'] as num?)?.toInt() ?? 0,
-        messagesToday: (j['messages_today'] as num?)?.toInt() ?? 0,
+        usersTotal: _parseInt(j['users_total']),
+        usersBanned: _parseInt(j['users_banned']),
+        usersOnline: _parseInt(j['users_online']),
+        conversationsTotal: _parseInt(j['conversations_total']),
+        groupsTotal: _parseInt(j['groups_total']),
+        messagesTotal: _parseInt(j['messages_total']),
+        messagesToday: _parseInt(j['messages_today']),
       );
 }
 
@@ -45,6 +44,7 @@ class AdminUser {
     this.bannedReason,
     this.email,
     required this.messageCount,
+    this.rank,
   });
 
   final String id;
@@ -60,21 +60,23 @@ class AdminUser {
   final String? bannedReason;
   final String? email;
   final int messageCount;
+  final String? rank;
 
   factory AdminUser.fromJson(Map<String, dynamic> j) => AdminUser(
-        id: j['id'] as String,
-        username: j['username'] as String,
-        displayName: j['display_name'] as String?,
-        avatarUrl: j['avatar_url'] as String?,
-        isOnline: (j['is_online'] as bool?) ?? false,
+        id: (j['id'] ?? '').toString(),
+        username: (j['username'] ?? '').toString(),
+        displayName: j['display_name']?.toString(),
+        avatarUrl: j['avatar_url']?.toString(),
+        isOnline: j['is_online'] == true,
         lastSeen: _parseDate(j['last_seen']),
         createdAt: _parseDate(j['created_at']) ?? DateTime.now(),
-        bio: j['bio'] as String?,
-        isBanned: (j['is_banned'] as bool?) ?? false,
+        bio: j['bio']?.toString(),
+        isBanned: j['is_banned'] == true,
         bannedAt: _parseDate(j['banned_at']),
-        bannedReason: j['banned_reason'] as String?,
-        email: j['email'] as String?,
-        messageCount: (j['message_count'] as num?)?.toInt() ?? 0,
+        bannedReason: j['banned_reason']?.toString(),
+        email: j['email']?.toString(),
+        messageCount: _parseInt(j['message_count']),
+        rank: j['rank']?.toString(),
       );
 }
 
@@ -121,7 +123,7 @@ class AdminConversation {
 
   factory AdminConversation.fromJson(Map<String, dynamic> j) =>
       AdminConversation(
-        id: j['id'] as String,
+        id: (j['id'] ?? '').toString(),
         kind: (j['kind'] as String?) ?? 'dm',
         title: j['title'] as String?,
         createdAt: _parseDate(j['created_at']) ?? DateTime.now(),
@@ -130,7 +132,7 @@ class AdminConversation {
             .map((dynamic e) =>
                 AdminConversationMember.fromJson(e as Map<String, dynamic>))
             .toList(),
-        messageCount: (j['message_count'] as num?)?.toInt() ?? 0,
+        messageCount: _parseInt(j['message_count']),
       );
 }
 
@@ -184,4 +186,11 @@ DateTime? _parseDate(dynamic v) {
   if (v is DateTime) return v;
   if (v is String && v.isNotEmpty) return DateTime.tryParse(v)?.toLocal();
   return null;
+}
+
+int _parseInt(dynamic v) {
+  if (v == null) return 0;
+  if (v is num) return v.toInt();
+  if (v is String) return int.tryParse(v) ?? 0;
+  return 0;
 }

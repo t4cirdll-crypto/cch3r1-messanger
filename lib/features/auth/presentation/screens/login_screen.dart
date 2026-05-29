@@ -36,7 +36,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             username: _username.text,
             password: _password.text,
           );
-      // Навигация произойдёт автоматически через GoRouter redirect.
     } on AuthException {
       _snack(AppStrings.errorInvalidCredentials);
     } catch (e) {
@@ -53,73 +52,101 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.signInTitle)),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    const SizedBox(height: 24),
-                    Icon(
-                      Icons.chat_bubble_rounded,
-                      size: 72,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: 32),
-                    TextFormField(
-                      controller: _username,
-                      autofillHints: const <String>[AutofillHints.username],
-                      decoration: const InputDecoration(
-                        labelText: AppStrings.usernameLabel,
-                        hintText: AppStrings.usernameHint,
-                        prefixIcon: Icon(Icons.alternate_email),
-                      ),
-                      textInputAction: TextInputAction.next,
-                      validator: Validators.username,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _password,
-                      obscureText: _obscure,
-                      autofillHints: const <String>[AutofillHints.password],
-                      decoration: InputDecoration(
-                        labelText: AppStrings.passwordLabel,
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          onPressed: () => setState(() => _obscure = !_obscure),
-                          icon: Icon(
-                            _obscure ? Icons.visibility : Icons.visibility_off,
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        Icon(
+                          Icons.forum_rounded,
+                          size: 56,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          AppStrings.appName,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submit(),
-                      validator: Validators.password,
+                        const SizedBox(height: 8),
+                        Text(
+                          AppStrings.signInTitle,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        TextFormField(
+                          controller: _username,
+                          autofillHints: const <String>[AutofillHints.username],
+                          decoration: const InputDecoration(
+                            labelText: AppStrings.usernameLabel,
+                            hintText: AppStrings.usernameHint,
+                            prefixIcon: Icon(Icons.alternate_email),
+                          ),
+                          textInputAction: TextInputAction.next,
+                          validator: Validators.username,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _password,
+                          obscureText: _obscure,
+                          autofillHints: const <String>[AutofillHints.password],
+                          decoration: InputDecoration(
+                            labelText: AppStrings.passwordLabel,
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              onPressed: () =>
+                                  setState(() => _obscure = !_obscure),
+                              icon: Icon(
+                                _obscure
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                              ),
+                            ),
+                          ),
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submit(),
+                          validator: Validators.password,
+                        ),
+                        const SizedBox(height: 24),
+                        FilledButton(
+                          onPressed: _busy ? null : _submit,
+                          child: _busy
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                  ),
+                                )
+                              : const Text(AppStrings.signInButton),
+                        ),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed:
+                              _busy ? null : () => context.go('/register'),
+                          child: const Text(AppStrings.goToSignUp),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: _busy ? null : _submit,
-                      child: _busy
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.4),
-                            )
-                          : const Text(AppStrings.signInButton),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: _busy ? null : () => context.go('/register'),
-                      child: const Text(AppStrings.goToSignUp),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

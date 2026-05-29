@@ -252,8 +252,9 @@ class ChatRemoteDataSource {
     final StreamController<MessageStreamEvent> controller =
         StreamController<MessageStreamEvent>.broadcast();
 
+    final String uniqueChannelName = 'public:messages:$conversationId:${DateTime.now().microsecondsSinceEpoch}';
     final RealtimeChannel channel = _client
-        .channel('public:messages:$conversationId')
+        .channel(uniqueChannelName)
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
@@ -324,8 +325,9 @@ class ChatRemoteDataSource {
     final StreamController<ReactionEvent> controller =
         StreamController<ReactionEvent>.broadcast();
 
+    final String uniqueChannelName = 'public:message_reactions:${DateTime.now().microsecondsSinceEpoch}';
     final RealtimeChannel channel = _client
-        .channel('public:message_reactions')
+        .channel(uniqueChannelName)
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',

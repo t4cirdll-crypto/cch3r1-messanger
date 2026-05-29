@@ -117,4 +117,17 @@ class AdminRepository {
     if (res is num) return res.toInt();
     return 0;
   }
+
+  Future<void> setRank({
+    required String userId,
+    required String? rank,
+  }) async {
+    await _client.rpc<dynamic>(
+      'fn_admin_set_rank',
+      params: <String, dynamic>{
+        'p_user_id': userId,
+        'p_rank': rank,
+      },
+    );
+  }
 }

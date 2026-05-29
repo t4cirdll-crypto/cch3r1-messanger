@@ -47,6 +47,7 @@ class ChatListLocalDataSource {
         'peer_avatar_url': c.peer?.avatarUrl,
         'peer_is_online': (c.peer?.isOnline ?? false) ? 1 : 0,
         'peer_last_seen': c.peer?.lastSeen?.millisecondsSinceEpoch,
+        'peer_rank': c.peer?.rank,
         'last_message_id': c.lastMessage?.id,
         'last_message_content': c.lastMessage?.content,
         'last_message_sender_id': c.lastMessage?.senderId,
@@ -77,6 +78,7 @@ class ChatListLocalDataSource {
             : DateTime.fromMillisecondsSinceEpoch(
                 row['peer_last_seen']! as int,
               ),
+        rank: row['peer_rank'] as String?,
       );
     }
     MessageEntity? last;

@@ -66,7 +66,7 @@ class ChatListRemoteDataSource {
         .from('conversation_members')
         .select(
           'conversation_id,user_id,role,joined_at,last_read_at,muted_until,'
-          'profile:profiles!conversation_members_user_id_fkey(id,username,display_name,bio,avatar_url,is_online,last_seen,created_at)',
+          'profile:profiles!conversation_members_user_id_fkey(id,username,display_name,bio,avatar_url,is_online,last_seen,created_at,rank)',
         )
         .inFilter('conversation_id', conversationIds);
     return rows
@@ -264,8 +264,9 @@ class ChatListRemoteDataSource {
   /// Любое изменение, касающееся диалогов — рефетч списка.
   Stream<void> watchChanges(String userId) {
     final StreamController<void> controller = StreamController<void>.broadcast();
+    final String uniqueChannelName = 'public:chat_list:$userId:${DateTime.now().microsecondsSinceEpoch}';
     final RealtimeChannel channel = _client
-        .channel('public:chat_list:$userId')
+        .channel(uniqueChannelName)
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',

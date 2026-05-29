@@ -90,10 +90,63 @@ class _UserTile extends ConsumerWidget {
       title: Row(
         children: <Widget>[
           Expanded(
-            child: Text('@${user.username}',
-                style: TextStyle(
-                  decoration: user.isBanned ? TextDecoration.lineThrough : null,
-                )),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Flexible(
+                  child: Text('@${user.username}',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        decoration: user.isBanned ? TextDecoration.lineThrough : null,
+                      )),
+                ),
+                if (user.rank != null && user.rank!.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Builder(
+                    builder: (BuildContext ctx) {
+                      final String r = user.rank!.toUpperCase();
+                      final ColorScheme cs = Theme.of(ctx).colorScheme;
+                      final Color bg;
+                      final Color border;
+                      final Color text;
+                      if (r == 'BOT' || r == 'БОТ') {
+                        bg = Colors.purple.withValues(alpha: 0.15);
+                        border = Colors.purple.withValues(alpha: 0.4);
+                        text = Colors.purple;
+                      } else if (r == 'ADMIN' || r == 'АДМИН') {
+                        bg = Colors.red.withValues(alpha: 0.15);
+                        border = Colors.red.withValues(alpha: 0.4);
+                        text = Colors.red;
+                      } else if (r == 'VIP') {
+                        bg = Colors.amber.withValues(alpha: 0.15);
+                        border = Colors.amber.withValues(alpha: 0.4);
+                        text = Colors.amber.shade800;
+                      } else {
+                        bg = cs.primaryContainer;
+                        border = cs.primary.withValues(alpha: 0.4);
+                        text = cs.primary;
+                      }
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: bg,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: border, width: 1),
+                        ),
+                        child: Text(
+                          user.rank!.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: text,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ],
+            ),
           ),
           if (user.isOnline)
             const Icon(Icons.circle, color: Colors.green, size: 10),
@@ -118,6 +171,10 @@ class _UserTile extends ConsumerWidget {
             child: Text(user.isBanned ? 'Разбанить' : 'Забанить'),
           ),
           const PopupMenuItem<String>(
+            value: 'set_rank',
+            child: Text('Изменить ранг'),
+          ),
+          const PopupMenuItem<String>(
             value: 'reset_password',
             child: Text('Сбросить пароль'),
           ),
@@ -135,6 +192,18 @@ class _UserTile extends ConsumerWidget {
     final AdminRepository repo = ref.read(adminRepositoryProvider);
     try {
       switch (action) {
+        case 'set_rank':
+          final String? newRank = await _askText(
+              context, 'Укажите ранг (например, БОТ, VIP, ADMIN или пусто для сброса)',
+              initial: user.rank ?? '');
+          if (newRank == null) return;
+          await repo.setRank(userId: user.id, rank: newRank);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Ранг пользователя обновлен')),
+            );
+          }
+          break;
         case 'ban':
           final String? reason = await _askText(
               context, 'Причина бана (необязательно)', initial: '');

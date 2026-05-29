@@ -40,25 +40,21 @@ class MessageBubble extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
 
-    // Входящие сообщения окрашиваем в `secondaryContainer`, чтобы они
-    // визуально отделялись от фона чата (в Material 3 `surface` и
-    // `surfaceContainerHighest` выглядят почти одинаково в светлой теме —
-    // bubble «сливался» с экраном).
     final Color bg = highlight
         ? scheme.tertiaryContainer
         : isMine
             ? scheme.primary
-            : scheme.secondaryContainer;
+            : scheme.surfaceContainerHigh;
     final Color fg = highlight
         ? scheme.onTertiaryContainer
         : isMine
             ? scheme.onPrimary
-            : scheme.onSecondaryContainer;
+            : scheme.onSurface;
     final BorderRadius radius = BorderRadius.only(
-      topLeft: const Radius.circular(16),
-      topRight: const Radius.circular(16),
-      bottomLeft: Radius.circular(isMine ? 16 : 4),
-      bottomRight: Radius.circular(isMine ? 4 : 16),
+      topLeft: const Radius.circular(20),
+      topRight: const Radius.circular(20),
+      bottomLeft: Radius.circular(isMine ? 20 : 6),
+      bottomRight: Radius.circular(isMine ? 6 : 20),
     );
 
     final double maxWidth = MediaQuery.of(context).size.width * 0.78;
@@ -77,159 +73,179 @@ class MessageBubble extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
               child: Column(
-              crossAxisAlignment:
-                  isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Container(
-                  padding: _padding(),
-                  decoration: BoxDecoration(color: bg, borderRadius: radius),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      if (message.isPinned)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              Icon(Icons.push_pin,
-                                  size: 12, color: fg.withValues(alpha: 0.75)),
-                              const SizedBox(width: 4),
-                              Text(
-                                AppStrings.messagePinned,
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: fg.withValues(alpha: 0.75),
-                                ),
-                              ),
-                            ],
+                crossAxisAlignment:
+                    isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Container(
+                    padding: _padding(),
+                    decoration: BoxDecoration(
+                      color: bg,
+                      borderRadius: radius,
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: theme.brightness == Brightness.light
+                                ? 0.04
+                                : 0.12,
                           ),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
                         ),
-                      if (message.isForwarded)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              Icon(Icons.fast_forward,
-                                  size: 14, color: fg.withValues(alpha: 0.75)),
-                              const SizedBox(width: 4),
-                              Text(
-                                AppStrings.messageForwarded,
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: fg.withValues(alpha: 0.75),
-                                  fontStyle: FontStyle.italic,
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        if (message.isPinned)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Icon(Icons.push_pin,
+                                    size: 12,
+                                    color: fg.withValues(alpha: 0.75)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  AppStrings.messagePinned,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: fg.withValues(alpha: 0.75),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (message.replyTo != null)
-                        QuotedMessage(
-                          message: message.replyTo!,
-                          foreground: fg,
-                          barColor: isMine ? scheme.onPrimary : scheme.primary,
-                        ),
-                      if (message.isDeleted)
-                        Padding(
-                          padding: _textPadding(),
-                          child: Text(
-                            AppStrings.messageDeleted,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: fg.withValues(alpha: 0.7),
-                              fontStyle: FontStyle.italic,
+                              ],
                             ),
                           ),
-                        )
-                      else ...<Widget>[
-                        if (message.hasAttachment)
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: _attachmentWidget(maxWidth, fg),
+                        if (message.isForwarded)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Icon(Icons.fast_forward,
+                                    size: 14,
+                                    color: fg.withValues(alpha: 0.75)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  AppStrings.messageForwarded,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: fg.withValues(alpha: 0.75),
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        if (message.hasAttachment && message.hasText)
-                          const SizedBox(height: 6),
-                        if (message.hasText)
+                        if (message.replyTo != null)
+                          QuotedMessage(
+                            message: message.replyTo!,
+                            foreground: fg,
+                            barColor:
+                                isMine ? scheme.onPrimary : scheme.primary,
+                          ),
+                        if (message.isDeleted)
                           Padding(
                             padding: _textPadding(),
                             child: Text(
-                              message.content!,
-                              style: theme.textTheme.bodyLarge
-                                  ?.copyWith(color: fg),
+                              AppStrings.messageDeleted,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: fg.withValues(alpha: 0.7),
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
-                          ),
-                      ],
-                      const SizedBox(height: 2),
-                      Padding(
-                        padding: _textPadding(),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            if (message.isEdited && !message.isDeleted) ...<Widget>[
-                              Text(
-                                AppStrings.messageEdited,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: fg.withValues(alpha: 0.7),
-                                  fontStyle: FontStyle.italic,
+                          )
+                        else ...<Widget>[
+                          if (message.hasAttachment)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: _attachmentWidget(maxWidth, fg),
+                            ),
+                          if (message.hasAttachment && message.hasText)
+                            const SizedBox(height: 6),
+                          if (message.hasText)
+                            Padding(
+                              padding: _textPadding(),
+                              child: Text(
+                                message.content!,
+                                style: theme.textTheme.bodyLarge
+                                    ?.copyWith(color: fg),
+                              ),
+                            ),
+                        ],
+                        const SizedBox(height: 2),
+                        Padding(
+                          padding: _textPadding(),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              if (message.isEdited &&
+                                  !message.isDeleted) ...<Widget>[
+                                Text(
+                                  AppStrings.messageEdited,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: fg.withValues(alpha: 0.7),
+                                    fontStyle: FontStyle.italic,
+                                  ),
                                 ),
+                                const SizedBox(width: 6),
+                              ],
+                              Text(
+                                DateFormatter.shortTime(message.createdAt),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                    color: fg.withValues(alpha: 0.75)),
                               ),
-                              const SizedBox(width: 6),
+                              if (message.expiresAt != null &&
+                                  !message.isDeleted) ...<Widget>[
+                                const SizedBox(width: 4),
+                                _ExpiryBadge(
+                                  expiresAt: message.expiresAt!,
+                                  color: fg,
+                                ),
+                              ],
+                              if (isMine &&
+                                  showRead &&
+                                  !message.isDeleted) ...<Widget>[
+                                const SizedBox(width: 4),
+                                Icon(
+                                  message.isRead ? Icons.done_all : Icons.check,
+                                  size: 16,
+                                  color: fg.withValues(alpha: 0.85),
+                                  semanticLabel: message.isRead
+                                      ? AppStrings.messageRead
+                                      : AppStrings.messageDelivered,
+                                ),
+                              ],
                             ],
-                            Text(
-                              DateFormatter.shortTime(message.createdAt),
-                              style: theme.textTheme.bodySmall
-                                  ?.copyWith(color: fg.withValues(alpha: 0.75)),
-                            ),
-                            if (message.expiresAt != null &&
-                                !message.isDeleted) ...<Widget>[
-                              const SizedBox(width: 4),
-                              _ExpiryBadge(
-                                expiresAt: message.expiresAt!,
-                                color: fg,
-                              ),
-                            ],
-                            if (isMine && showRead && !message.isDeleted) ...<Widget>[
-                              const SizedBox(width: 4),
-                              Icon(
-                                message.isRead ? Icons.done_all : Icons.check,
-                                size: 16,
-                                color: fg.withValues(alpha: 0.85),
-                                semanticLabel: message.isRead
-                                    ? AppStrings.messageRead
-                                    : AppStrings.messageDelivered,
-                              ),
-                            ],
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (message.hasReactions)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      alignment:
-                          isMine ? WrapAlignment.end : WrapAlignment.start,
-                      children: message.reactions
-                          .map((ReactionEntity r) => _ReactionChip(
-                                reaction: r,
-                                mine: r.isMine(currentUserId),
-                                onTap: onReactionTap == null
-                                    ? null
-                                    : () => onReactionTap!(r.emoji),
-                              ))
-                          .toList(),
+                      ],
                     ),
                   ),
-              ],
+                  if (message.hasReactions)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        alignment:
+                            isMine ? WrapAlignment.end : WrapAlignment.start,
+                        children: message.reactions
+                            .map((ReactionEntity r) => _ReactionChip(
+                                  reaction: r,
+                                  mine: r.isMine(currentUserId),
+                                  onTap: onReactionTap == null
+                                      ? null
+                                      : () => onReactionTap!(r.emoji),
+                                ))
+                            .toList(),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
         ),
       ),
     );
@@ -436,8 +452,9 @@ class _SwipeToReplyState extends State<_SwipeToReply>
     // Разрешаем только в одну сторону:
     //   входящие — свайп вправо (положительный dx);
     //   исходящие — свайп влево (отрицательный dx).
-    final double constrained =
-        widget.isMine ? next.clamp(-_maxOffset, 0.0) : next.clamp(0.0, _maxOffset);
+    final double constrained = widget.isMine
+        ? next.clamp(-_maxOffset, 0.0)
+        : next.clamp(0.0, _maxOffset);
     if (!_triggered && constrained.abs() >= _threshold) {
       _triggered = true;
       HapticFeedback.selectionClick();

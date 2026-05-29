@@ -4,17 +4,35 @@ import 'package:flutter/services.dart';
 class AppTheme {
   const AppTheme._();
 
-  static const Color _seed = Color(0xFF4F6DF5);
+  static const Color _seed = Color(0xFF6366F1);
 
   static ThemeData light(ColorScheme? dynamic) {
     final ColorScheme scheme = dynamic ??
-        ColorScheme.fromSeed(seedColor: _seed, brightness: Brightness.light);
+        ColorScheme.fromSeed(
+          seedColor: _seed,
+          brightness: Brightness.light,
+        ).copyWith(
+          primary: const Color(0xFF6366F1),
+          secondary: const Color(0xFF4F46E5),
+          surface: const Color(0xFFF8FAFC),
+          onSurface: const Color(0xFF0F172A),
+          surfaceContainerHigh: const Color(0xFFF1F5F9),
+        );
     return _build(scheme);
   }
 
   static ThemeData dark(ColorScheme? dynamic) {
     final ColorScheme scheme = dynamic ??
-        ColorScheme.fromSeed(seedColor: _seed, brightness: Brightness.dark);
+        ColorScheme.fromSeed(
+          seedColor: _seed,
+          brightness: Brightness.dark,
+        ).copyWith(
+          primary: const Color(0xFF818CF8),
+          secondary: const Color(0xFF6366F1),
+          surface: const Color(0xFF090D16),
+          onSurface: const Color(0xFFF8FAFC),
+          surfaceContainerHigh: const Color(0xFF131B2E),
+        );
     return _build(scheme);
   }
 
@@ -54,8 +72,8 @@ class AppTheme {
         backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
         elevation: 0,
-        scrolledUnderElevation: 0.5,
-        surfaceTintColor: scheme.surfaceTint,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: false,
         titleTextStyle: tunedText.titleLarge?.copyWith(fontSize: 20),
         systemOverlayStyle: isLight
@@ -72,14 +90,18 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerHigh,
+        fillColor: isLight ? Colors.white : const Color(0xFF1E293B),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.8),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.8),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -127,7 +149,7 @@ class AppTheme {
         focusElevation: 4,
         hoverElevation: 4,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
         ),
       ),
       snackBarTheme: SnackBarThemeData(

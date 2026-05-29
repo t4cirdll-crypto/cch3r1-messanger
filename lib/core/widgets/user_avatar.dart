@@ -31,17 +31,50 @@ class UserAvatar extends StatelessWidget {
     final Color fg = foregroundColor ?? theme.colorScheme.onPrimaryContainer;
     final double size = radius * 2;
 
+    // Deterministic gradients for beautiful placeholder avatars
+    final int code = initial.isNotEmpty ? initial.codeUnitAt(0) : 0;
+    final List<Color> gradientColors;
+    if (backgroundColor != null) {
+      gradientColors = [bg, bg];
+    } else {
+      final List<List<Color>> palettes = [
+        [const Color(0xFF6366F1), const Color(0xFF4F46E5)],
+        [const Color(0xFFEC4899), const Color(0xFFD946EF)],
+        [const Color(0xFF14B8A6), const Color(0xFF0D9488)],
+        [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+        [const Color(0xFF3B82F6), const Color(0xFF2563EB)],
+        [const Color(0xFF8B5CF6), const Color(0xFF7C3AED)],
+        [const Color(0xFF10B981), const Color(0xFF059669)],
+      ];
+      gradientColors = palettes[code % palettes.length];
+    }
+    final Color textColor = backgroundColor != null ? fg : Colors.white;
+
     final Widget fallback = Container(
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradientColors,
+        ),
+        shape: BoxShape.circle,
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Text(
         initial,
         style: TextStyle(
-          color: fg,
+          color: textColor,
           fontSize: radius * 0.8,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

@@ -7,9 +7,12 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/providers/supabase_providers.dart';
 import '../../../../core/services/notifications_listener.dart';
 import '../../../../core/utils/date_format.dart';
+import '../../../../core/utils/drafts_manager.dart';
 import '../../../../core/widgets/user_avatar.dart';
+import '../../../../core/widgets/glass_widgets.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../chat_list/domain/entities/conversation_entity.dart';
+import '../../../profile/presentation/widgets/user_profile_sheet.dart';
 import '../../../chat_list/presentation/providers/chat_list_providers.dart';
 import '../../domain/entities/message_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
@@ -56,6 +59,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _controller.addListener(_onTextChanged);
+
+    // Load draft if any
+    final String? draft = DraftsManager.getDraft(widget.conversationId);
+    if (draft != null && draft.isNotEmpty) {
+      _controller.text = draft;
+      _controller.selection = TextSelection.collapsed(offset: draft.length);
+      _hasText = true;
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       ref.read(activeConversationIdProvider.notifier).state =
           widget.conversationId;
@@ -66,7 +78,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _onTextChanged() {
-    final bool nextHasText = _controller.text.trim().isNotEmpty;
+    final String currentText = _controller.text;
+    final bool nextHasText = currentText.trim().isNotEmpty;
     if (nextHasText != _hasText) {
       setState(() => _hasText = nextHasText);
     }
@@ -75,6 +88,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       // ignore: discarded_futures
       ref.read(typingChannelProvider(widget.conversationId)).ping();
     }
+    // Save draft asynchronously
+    // ignore: discarded_futures
+    DraftsManager.saveDraft(widget.conversationId, currentText);
   }
 
   void _onScroll() {
@@ -103,6 +119,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
+    // Save draft on dispose to ensure it's up to date
+    DraftsManager.saveDraft(widget.conversationId, _controller.text);
+
     final StateController<String?> ctrl =
         ref.read(activeConversationIdProvider.notifier);
     if (ctrl.state == widget.conversationId) {
@@ -141,13 +160,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   /// странице — скроллим к нему, иначе подсвечиваем по id (а пагинация
   /// дотащит его при следующем `loadMore`).
   void _jumpToMessage(MessageEntity target) {
-    final ChatState? data = ref
-        .read(chatControllerProvider(widget.conversationId))
-        .valueOrNull;
+    final ChatState? data =
+        ref.read(chatControllerProvider(widget.conversationId)).valueOrNull;
     if (data == null) return;
-    final List<MessageEntity> visible = data.messages
-        .where((MessageEntity m) => !m.isExpired)
-        .toList();
+    final List<MessageEntity> visible =
+        data.messages.where((MessageEntity m) => !m.isExpired).toList();
     final int positionFromTop =
         visible.indexWhere((MessageEntity m) => m.id == target.id);
     setState(() => _highlightId = target.id);
@@ -220,9 +237,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _uploadAndSend(OutgoingAttachment attachment) async {
-    final String? caption = _controller.text.trim().isEmpty
-        ? null
-        : _controller.text.trim();
+    final String? caption =
+        _controller.text.trim().isEmpty ? null : _controller.text.trim();
     final String? replyToId = _replyTo?.id;
     setState(() => _uploading = true);
     try {
@@ -335,8 +351,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         await context.push<ConversationEntity?>('/forward-picker');
     if (target == null || !mounted) return;
     try {
-      final ChatRepository repo =
-          await ref.read(chatRepositoryProvider.future);
+      final ChatRepository repo = await ref.read(chatRepositoryProvider.future);
       String? content = m.content;
       if (m.hasAttachment && (content == null || content.isEmpty)) {
         content = '[вложение: ${m.attachmentKind?.value ?? 'файл'}]';
@@ -377,9 +392,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ref.watch(chatControllerProvider(widget.conversationId));
     final String? uid = ref.watch(currentUserIdProvider);
     final ConversationEntity? liveConv = _liveConversation(ref);
+    final ColorScheme cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: GlassmorphicAppBar(
         title: _buildTitle(context, liveConv),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -394,9 +410,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               liveConv?.muted ?? false
                   ? Icons.notifications_off
                   : Icons.notifications_outlined,
-              color: liveConv?.muted ?? false
-                  ? Theme.of(context).colorScheme.primary
-                  : null,
+              color: liveConv?.muted ?? false ? cs.primary : null,
             ),
             onPressed: () => _openMuteSheet(liveConv),
           ),
@@ -409,9 +423,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               liveConv?.hasSelfDestruct ?? false
                   ? Icons.timer
                   : Icons.timer_outlined,
-              color: liveConv?.hasSelfDestruct ?? false
-                  ? Theme.of(context).colorScheme.primary
-                  : null,
+              color: liveConv?.hasSelfDestruct ?? false ? cs.primary : null,
             ),
             onPressed: () => _openSelfDestructSheet(liveConv),
           ),
@@ -431,6 +443,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Expanded(
             child: Stack(
               children: <Widget>[
+                Positioned.fill(
+                  child: Container(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                  ),
+                ),
                 state.when(
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
@@ -455,14 +472,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       controller: _scrollController,
                       reverse: true,
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount:
-                          visible.length + (data.isLoadingMore ? 1 : 0),
+                      itemCount: visible.length + (data.isLoadingMore ? 1 : 0),
                       itemBuilder: (BuildContext _, int index) {
                         if (data.isLoadingMore && index == visible.length) {
                           return const Padding(
                             padding: EdgeInsets.all(12),
-                            child:
-                                Center(child: CircularProgressIndicator()),
+                            child: Center(child: CircularProgressIndicator()),
                           );
                         }
                         final int i = visible.length - 1 - index;
@@ -484,9 +499,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                     DateFormatter.messageDayHeader(
                                       m.createdAt,
                                     ),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall,
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall,
                                   ),
                                 ),
                               ),
@@ -496,8 +510,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               showRead: isMine,
                               currentUserId: uid,
                               highlight: _highlightId == m.id,
-                              onLongPress: () =>
-                                  _openMessageActions(m, isMine),
+                              onLongPress: () => _openMessageActions(m, isMine),
                               onSwipeReply: m.isDeleted
                                   ? null
                                   : () => setState(() => _replyTo = m),
@@ -544,48 +557,86 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               message: _replyTo!,
               onCancel: () => setState(() => _replyTo = null),
             ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
-                  IconButton(
-                    tooltip: 'Прикрепить',
-                    onPressed: _voiceState.isRecording || _uploading
-                        ? null
-                        : _openAttachmentMenu,
-                    icon: const Icon(Icons.attach_file_outlined),
+          Container(
+            decoration: BoxDecoration(
+              color: cs.surface,
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(
+                    alpha: Theme.of(context).brightness == Brightness.light
+                        ? 0.03
+                        : 0.15,
                   ),
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      minLines: 1,
-                      maxLines: 5,
-                      enabled: !_voiceState.isRecording,
-                      textInputAction: TextInputAction.newline,
-                      decoration: const InputDecoration(
-                        hintText: AppStrings.messageHint,
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: <Widget>[
+                    IconButton(
+                      tooltip: 'Прикрепить',
+                      onPressed: _voiceState.isRecording || _uploading
+                          ? null
+                          : _openAttachmentMenu,
+                      icon: const Icon(Icons.add_circle_outline_rounded,
+                          size: 26),
+                      color: cs.primary,
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        minLines: 1,
+                        maxLines: 5,
+                        enabled: !_voiceState.isRecording,
+                        textInputAction: TextInputAction.newline,
+                        decoration: InputDecoration(
+                          hintText: AppStrings.messageHint,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          fillColor:
+                              Theme.of(context).brightness == Brightness.light
+                                  ? Colors.grey.shade100
+                                  : cs.surfaceContainerHigh,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  if (_hasText)
-                    IconButton.filled(
-                      tooltip: AppStrings.messageSend,
-                      onPressed: _uploading ? null : _send,
-                      icon: const Icon(Icons.send_rounded),
-                    )
-                  else
-                    VoiceRecorderButton(
-                      onStateChanged: (VoiceRecorderState s) {
-                        if (mounted) setState(() => _voiceState = s);
-                      },
-                      onError: _toast,
-                      onRecorded: _uploadAndSend,
-                    ),
-                ],
+                    const SizedBox(width: 8),
+                    if (_hasText)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: CircleAvatar(
+                          radius: 22,
+                          backgroundColor: cs.primary,
+                          child: IconButton(
+                            tooltip: AppStrings.messageSend,
+                            onPressed: _uploading ? null : _send,
+                            icon: const Icon(Icons.send_rounded,
+                                size: 18, color: Colors.white),
+                          ),
+                        ),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: VoiceRecorderButton(
+                          onStateChanged: (VoiceRecorderState s) {
+                            if (mounted) setState(() => _voiceState = s);
+                          },
+                          onError: _toast,
+                          onRecorded: _uploadAndSend,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -740,9 +791,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
     if (picked == null || picked == current) return;
     try {
-      await ref
-          .read(chatListControllerProvider.notifier)
-          .setSelfDestruct(
+      await ref.read(chatListControllerProvider.notifier).setSelfDestruct(
             conversationId: widget.conversationId,
             seconds: picked,
           );
@@ -797,8 +846,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           children: <Widget>[
             CircleAvatar(
               radius: 18,
-              backgroundColor:
-                  Theme.of(context).colorScheme.secondaryContainer,
+              backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
               foregroundColor:
                   Theme.of(context).colorScheme.onSecondaryContainer,
               child: Text(
@@ -833,9 +881,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           : FontStyle.normal,
                       color: typing.isNotEmpty
                           ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -850,56 +896,113 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (peer == null) {
       return Text(conv.effectiveTitle);
     }
-    return Row(
-      children: <Widget>[
-        UserAvatar(
-          radius: 18,
-          initial: peer.effectiveName.isNotEmpty
-              ? peer.effectiveName.substring(0, 1).toUpperCase()
-              : '?',
-          avatarUrl: peer.avatarUrl,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Text(
-                peer.effectiveName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                typing.contains(peer.id)
-                    ? 'печатает…'
-                    : peer.isOnline
-                        ? AppStrings.online
-                        : peer.lastSeen == null
-                            ? ''
-                            : AppStrings.lastSeen(
-                                DateFormatter.lastSeenAgo(peer.lastSeen!),
-                              ),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontStyle: typing.contains(peer.id)
-                      ? FontStyle.italic
-                      : FontStyle.normal,
-                  color: typing.contains(peer.id)
-                      ? Theme.of(context).colorScheme.primary
-                      : peer.isOnline
-                          ? Colors.green
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+    return InkWell(
+      onTap: () => UserProfileSheet.show(context, peer.id),
+      borderRadius: BorderRadius.circular(8),
+      child: Row(
+        children: <Widget>[
+          UserAvatar(
+            radius: 18,
+            initial: peer.effectiveName.isNotEmpty
+                ? peer.effectiveName.substring(0, 1).toUpperCase()
+                : '?',
+            avatarUrl: peer.avatarUrl,
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Flexible(
+                      child: Text(
+                        peer.effectiveName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (peer.rank != null && peer.rank!.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Builder(
+                        builder: (BuildContext ctx) {
+                          final String r = peer.rank!.toUpperCase();
+                          final ColorScheme cs = Theme.of(ctx).colorScheme;
+                          final Color bg;
+                          final Color border;
+                          final Color text;
+                          if (r == 'BOT' || r == 'БОТ') {
+                            bg = Colors.purple.withValues(alpha: 0.15);
+                            border = Colors.purple.withValues(alpha: 0.4);
+                            text = Colors.purple;
+                          } else if (r == 'ADMIN' || r == 'АДМИН') {
+                            bg = Colors.red.withValues(alpha: 0.15);
+                            border = Colors.red.withValues(alpha: 0.4);
+                            text = Colors.red;
+                          } else if (r == 'VIP') {
+                            bg = Colors.amber.withValues(alpha: 0.15);
+                            border = Colors.amber.withValues(alpha: 0.4);
+                            text = Colors.amber.shade800;
+                          } else {
+                            bg = cs.primaryContainer;
+                            border = cs.primary.withValues(alpha: 0.4);
+                            text = cs.primary;
+                          }
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: bg,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: border, width: 1),
+                            ),
+                            child: Text(
+                              peer.rank!.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: text,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+                Text(
+                  typing.contains(peer.id)
+                      ? 'печатает…'
+                      : peer.isOnline
+                          ? AppStrings.online
+                          : peer.lastSeen == null
+                              ? ''
+                              : AppStrings.lastSeen(
+                                  DateFormatter.lastSeenAgo(peer.lastSeen!),
+                                ),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: typing.contains(peer.id)
+                        ? FontStyle.italic
+                        : FontStyle.normal,
+                    color: typing.contains(peer.id)
+                        ? Theme.of(context).colorScheme.primary
+                        : peer.isOnline
+                            ? Colors.green
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -935,9 +1038,8 @@ class _PinnedBannerState extends ConsumerState<_PinnedBanner> {
         ref.watch(pinnedMessagesProvider(widget.conversationId));
     final List<MessageEntity> raw =
         pinnedAsync.valueOrNull ?? const <MessageEntity>[];
-    final List<MessageEntity> pinned = raw
-        .where((MessageEntity m) => !m.isDeleted)
-        .toList(growable: false);
+    final List<MessageEntity> pinned =
+        raw.where((MessageEntity m) => !m.isDeleted).toList(growable: false);
     if (pinned.isEmpty) return const SizedBox.shrink();
 
     // Самый свежий pin показываем первым; дальше — по убыванию `pinnedAt`.

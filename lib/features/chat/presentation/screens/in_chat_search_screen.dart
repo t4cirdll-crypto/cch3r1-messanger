@@ -16,8 +16,7 @@ class InChatSearchScreen extends ConsumerStatefulWidget {
   final String conversationId;
 
   @override
-  ConsumerState<InChatSearchScreen> createState() =>
-      _InChatSearchScreenState();
+  ConsumerState<InChatSearchScreen> createState() => _InChatSearchScreenState();
 }
 
 class _InChatSearchScreenState extends ConsumerState<InChatSearchScreen> {
@@ -53,8 +52,7 @@ class _InChatSearchScreenState extends ConsumerState<InChatSearchScreen> {
       _error = null;
     });
     try {
-      final ChatRepository repo =
-          await ref.read(chatRepositoryProvider.future);
+      final ChatRepository repo = await ref.read(chatRepositoryProvider.future);
       final List<MessageEntity> list = await repo.searchInConversation(
         conversationId: widget.conversationId,
         query: q,

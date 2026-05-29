@@ -84,8 +84,12 @@ begin
     return new;
   end if;
 
-  -- Триггерим только если бот один из участников диалога.
-  if conv.user1_id <> bot_id and conv.user2_id <> bot_id then
+  -- Триггерим только если это DM диалог и бот один из его участников.
+  if conv.kind = 'saved' or conv.kind = 'group' then
+    return new;
+  end if;
+
+  if conv.kind <> 'dm' or (conv.user1_id is distinct from bot_id and conv.user2_id is distinct from bot_id) then
     return new;
   end if;
 

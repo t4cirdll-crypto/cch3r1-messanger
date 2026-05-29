@@ -11,6 +11,7 @@ class ProfileEntity {
     this.isOnline = false,
     this.lastSeen,
     this.createdAt,
+    this.rank,
   });
 
   final String id;
@@ -21,6 +22,7 @@ class ProfileEntity {
   final bool isOnline;
   final DateTime? lastSeen;
   final DateTime? createdAt;
+  final String? rank;
 
   String get effectiveName {
     final String? name = displayName?.trim();
@@ -47,6 +49,7 @@ class ProfileEntity {
     bool? isOnline,
     DateTime? lastSeen,
     DateTime? createdAt,
+    String? rank,
   }) {
     return ProfileEntity(
       id: id ?? this.id,
@@ -57,6 +60,7 @@ class ProfileEntity {
       isOnline: isOnline ?? this.isOnline,
       lastSeen: lastSeen ?? this.lastSeen,
       createdAt: createdAt ?? this.createdAt,
+      rank: rank ?? this.rank,
     );
   }
 
@@ -70,9 +74,10 @@ class ProfileEntity {
           bio == other.bio &&
           avatarUrl == other.avatarUrl &&
           isOnline == other.isOnline &&
-          lastSeen == other.lastSeen);
+          lastSeen == other.lastSeen &&
+          rank == other.rank);
 
   @override
   int get hashCode =>
-      Object.hash(id, username, displayName, bio, avatarUrl, isOnline, lastSeen);
+      Object.hash(id, username, displayName, bio, avatarUrl, isOnline, lastSeen, rank);
 }

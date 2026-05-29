@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +9,9 @@ import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../chat_list/domain/entities/conversation_entity.dart';
 import '../../../chat_list/presentation/providers/chat_list_providers.dart';
 import '../providers/search_providers.dart';
+
+import '../../../../core/widgets/user_avatar.dart';
+import '../../../profile/presentation/widgets/user_profile_sheet.dart';
 
 class SearchUserScreen extends ConsumerStatefulWidget {
   const SearchUserScreen({super.key});
@@ -91,21 +93,61 @@ class _SearchUserScreenState extends ConsumerState<SearchUserScreen> {
                   itemBuilder: (BuildContext _, int i) {
                     final ProfileEntity p = users[i];
                     return ListTile(
-                      onTap: () => _startConversation(p),
-                      leading: CircleAvatar(
+                      onTap: () => UserProfileSheet.show(context, p.id),
+                      leading: UserAvatar(
                         radius: 24,
-                        backgroundColor:
-                            Theme.of(context).colorScheme.primaryContainer,
-                        backgroundImage: p.avatarUrl != null
-                            ? CachedNetworkImageProvider(p.avatarUrl!)
-                            : null,
-                        child: p.avatarUrl == null
-                            ? Text(
-                                p.effectiveName.substring(0, 1).toUpperCase(),
-                              )
-                            : null,
+                        initial: p.effectiveName.isNotEmpty
+                            ? p.effectiveName.substring(0, 1).toUpperCase()
+                            : '?',
+                        avatarUrl: p.avatarUrl,
                       ),
-                      title: Text(p.effectiveName),
+                      title: Row(
+                        children: <Widget>[
+                          Flexible(
+                            child: Text(
+                              p.effectiveName,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (p.rank != null && p.rank!.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: p.rank!.toUpperCase() == 'BOT' ||
+                                        p.rank!.toUpperCase() == 'БОТ'
+                                    ? Colors.purple.withValues(alpha: 0.15)
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: p.rank!.toUpperCase() == 'BOT' ||
+                                          p.rank!.toUpperCase() == 'БОТ'
+                                      ? Colors.purple.withValues(alpha: 0.4)
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withValues(alpha: 0.4),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                p.rank!.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: p.rank!.toUpperCase() == 'BOT' ||
+                                          p.rank!.toUpperCase() == 'БОТ'
+                                      ? Colors.purple
+                                      : Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                       subtitle: Text('@${p.username}'),
                       trailing: IconButton(
                         icon: const Icon(Icons.chat_bubble_outline),

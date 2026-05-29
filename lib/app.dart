@@ -6,6 +6,7 @@ import 'config/routes.dart';
 import 'config/theme.dart';
 import 'core/constants/app_strings.dart';
 import 'core/providers/app_settings_providers.dart';
+import 'core/widgets/presence_tracker.dart';
 
 class CchrMessangerApp extends ConsumerWidget {
   const CchrMessangerApp({super.key});
@@ -13,20 +14,20 @@ class CchrMessangerApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    final ThemeMode themeMode = ref
-            .watch(themeModeControllerProvider)
-            .valueOrNull ??
-        ThemeMode.system;
+    final ThemeMode themeMode =
+        ref.watch(themeModeControllerProvider).valueOrNull ?? ThemeMode.system;
 
     return DynamicColorBuilder(
       builder: (ColorScheme? light, ColorScheme? dark) {
-        return MaterialApp.router(
-          title: AppStrings.appName,
-          debugShowCheckedModeBanner: false,
-          themeMode: themeMode,
-          theme: AppTheme.light(light),
-          darkTheme: AppTheme.dark(dark),
-          routerConfig: router,
+        return PresenceTracker(
+          child: MaterialApp.router(
+            title: AppStrings.appName,
+            debugShowCheckedModeBanner: false,
+            themeMode: themeMode,
+            theme: AppTheme.light(light),
+            darkTheme: AppTheme.dark(dark),
+            routerConfig: router,
+          ),
         );
       },
     );

@@ -9,7 +9,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'config/supabase_config.dart';
+import 'core/services/dynamic_proxy_http_client.dart';
 import 'core/services/local_notification_service.dart';
+import 'core/utils/drafts_manager.dart';
+import 'core/utils/proxy_settings.dart';
 
 /// Установлен после `runApp(CchrMessangerApp)`. После этого момента
 /// необработанные ошибки в рантайме (отказ в правах, сетевые сбои и
@@ -23,6 +26,8 @@ Future<void> main() async {
   // как приложение поднялось, ошибки только логируем.
   await runZonedGuarded<Future<void>>(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    await ProxySettings.init();
+    await DraftsManager.init();
     await initializeDateFormatting('ru');
 
     await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
@@ -43,6 +48,7 @@ Future<void> main() async {
         url: SupabaseConfig.url,
         anonKey: SupabaseConfig.anonKey,
         debug: kDebugMode,
+        httpClient: DynamicProxyHttpClient(),
       );
     } catch (error, stackTrace) {
       debugPrint('Supabase init error: $error\n$stackTrace');
