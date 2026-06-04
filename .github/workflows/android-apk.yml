@@ -31,6 +31,8 @@ jobs:
         with:
           channel: stable
           cache: true
+          # Flutter 3.24+ уже на AGP 8.7, а у нас AGP 8.11 — фиксируем свежий stable.
+          flutter-version: "3.27.1"
 
       - name: Flutter version
         run: flutter --version
@@ -43,6 +45,27 @@ jobs:
 
       - name: Static analysis
         run: flutter analyze
+
+      # Если в secrets есть keystore (base64) и пароль — раскладываем
+      # android/key.properties + android/app/release.keystore перед сборкой.
+      # Иначе release собирается с debug-ключом (TODO из старого билд-скрипта).
+      - name: Materialize release keystore from secrets (optional)
+        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+          cat > android/key.properties <<EOF
+          storeFile=release.keystore
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=$ANDROID_KEY_PASSWORD
+          EOF
+          ls -lh android/app/release.keystore android/key.properties
 
       - name: Resolve Supabase config (use secrets if set, else compiled defaults)
         id: cfg

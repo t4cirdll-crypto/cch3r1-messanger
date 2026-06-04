@@ -121,6 +121,7 @@ jobs:
         with:
           channel: stable
           cache: true
+          flutter-version: "3.27.1"
       - run: flutter --version
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
@@ -155,11 +156,69 @@ jobs:
           retention-days: 30
 ```
 
-Чтобы переопределить дефолтные `SUPABASE_URL` / `SUPABASE_ANON_KEY` в сборке,
-добавь их в `Settings → Secrets and variables → Actions` репозитория с теми же
-именами — workflow прокинет их через `--dart-define`.
+## Сборка APK и IPA в CI
 
-Скачать APK можно в `Actions → Build Android APK → <run> → Artifacts`.
+В `.github/workflows/` лежат два workflow:
+
+* `android-apk.yml` — `Build Android APK` (ubuntu-latest, JDK 17, Flutter 3.27.1).
+* `ios-ipa.yml` — `Build iOS IPA (unsigned)` (macos-14, Xcode 15.4, Flutter 3.27.1).
+
+Оба триггерятся на push/PR в `main` и на ручной запуск (`workflow_dispatch`).
+Артефакты загружаются как `cch3r1-messanger-{debug,release}-apk` и
+`cch3r1-messanger-ios-unsigned-ipa` (retention 30 дней).
+
+### Secrets
+
+`Settings → Secrets and variables → Actions` репозитория:
+
+| Секрет | Обязательный? | Зачем |
+|---|---|---|
+| `SUPABASE_URL` | опц. | Перекрывает `lib/config/supabase_config.dart` через `--dart-define`. |
+| `SUPABASE_ANON_KEY` | опц. | То же. |
+| `GIPHY_API_KEY` | опц. | Ключ Giphy для GIF-вставок. |
+| `ANDROID_KEYSTORE_BASE64` | опц. | `base64 -w0 release.keystore`. Если задан — релиз подписывается. |
+| `ANDROID_KEYSTORE_PASSWORD` | опц. | Пароль keystore. |
+| `ANDROID_KEY_ALIAS` | опц. | Alias ключа. |
+| `ANDROID_KEY_PASSWORD` | опц. | Пароль ключа. |
+
+### Android (`android-apk.yml`)
+
+* Temurin JDK 17, Flutter 3.27.1 stable (с кэшем `~/.pub-cache`).
+* `pub get` → `build_runner` → `flutter analyze`.
+* Если заданы `ANDROID_KEYSTORE_*` — раскладывает `android/app/release.keystore`
+  и `android/key.properties` перед сборкой; иначе release подписывается
+  debug-ключом.
+* Собирает **debug и release** APK.
+* Артефакты: `cch3r1-messanger-debug-apk`, `cch3r1-messanger-release-apk`.
+
+### iOS (`ios-ipa.yml`)
+
+* `macos-14` + Xcode 15.4, Flutter 3.27.1 stable.
+* `actions/cache@v4` для `ios/Pods` и `~/Library/Caches/CocoaPods` (ключ
+  по `Podfile.lock`) — повторные сборки заметно быстрее.
+* `flutter build ios --release --no-codesign` → `build/ios/iphoneos/Runner.app`
+  оборачивается в `Payload/` и зипуется в `cch3r1-messanger-unsigned.ipa`.
+* **Не подписан** — ставится через TrollStore / AltStore / Sideloadly / на
+  джейлбрейк. Для App Store / TestFlight нужен экспорт из локального Xcode
+  с сертификатом разработчика (это требует интерактивного доступа к Apple ID
+  и не делается в CI).
+
+### Как сгенерировать keystore для Android
+
+```bash
+keytool -genkey -v \
+  -keystore android/app/release.keystore \
+  -keyalg RSA -keysize 2048 -validity 10000 \
+  -alias cch3r1 \
+  -storepass <KEYSTORE_PASSWORD> \
+  -keypass <KEY_PASSWORD> \
+  -dname "CN=cch3r1,O=local,C=RU"
+
+base64 -w0 android/app/release.keystore
+# скопировать в ANDROID_KEYSTORE_BASE64
+```
+
+Артефакты скачиваются в `Actions → <workflow> → <run> → Artifacts`.
 
 ## Безопасность
 
