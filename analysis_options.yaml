@@ -7,6 +7,10 @@ analyzer:
     - "ui_legacy/**"
   errors:
     invalid_annotation_target: ignore
+    # UseCase<T,P> объявляет call(P params), конкретные use-case'ы
+    # переименовывают в доменное имя (username / conversationId / file).
+    # Это документированное архитектурное решение — лишний шум отключаем.
+    avoid_renaming_method_parameters: ignore
 
 linter:
   rules:
