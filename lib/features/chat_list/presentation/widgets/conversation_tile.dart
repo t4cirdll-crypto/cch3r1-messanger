@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/date_format.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
@@ -37,7 +38,7 @@ class ConversationTile extends StatelessWidget {
         children: <Widget>[
           if (conversation.isGroup)
             Padding(
-              padding: const EdgeInsets.only(right: 4),
+              padding: const EdgeInsets.only(right: AppSpacing.xs),
               child: Icon(Icons.group, size: 18, color: cs.primary),
             ),
           Expanded(
@@ -51,13 +52,14 @@ class ConversationTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: unread ? FontWeight.w700 : FontWeight.w600,
+                      letterSpacing: -0.1,
                     ),
                   ),
                 ),
                 if (!conversation.isGroup &&
                     conversation.peer?.rank != null &&
                     conversation.peer!.rank!.isNotEmpty) ...[
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpacing.sm),
                   Builder(
                     builder: (BuildContext ctx) {
                       final String r = conversation.peer!.rank!.toUpperCase();
@@ -83,17 +85,18 @@ class ConversationTile extends StatelessWidget {
                       }
                       return Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1.5),
+                            horizontal: AppSpacing.xs + 1, vertical: 1.5),
                         decoration: BoxDecoration(
                           color: bg,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: AppRadius.xsAll,
                           border: Border.all(color: border, width: 1),
                         ),
                         child: Text(
                           conversation.peer!.rank!.toUpperCase(),
-                          style: TextStyle(
+                          style: theme.textTheme.labelSmall?.copyWith(
                             fontSize: 9,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.4,
                             color: text,
                           ),
                         ),
@@ -106,7 +109,7 @@ class ConversationTile extends StatelessWidget {
           ),
           if (conversation.muted)
             Padding(
-              padding: const EdgeInsets.only(left: 4),
+              padding: const EdgeInsets.only(left: AppSpacing.xs),
               child: Icon(
                 Icons.notifications_off,
                 size: 16,
@@ -116,7 +119,7 @@ class ConversationTile extends StatelessWidget {
         ],
       ),
       subtitle: Padding(
-        padding: const EdgeInsets.only(top: 2),
+        padding: const EdgeInsets.only(top: AppSpacing.xxs),
         child: Row(
           children: <Widget>[
             if (outgoing) ...[
@@ -125,7 +128,7 @@ class ConversationTile extends StatelessWidget {
                 size: 16,
                 color: last.isRead ? cs.primary : cs.onSurfaceVariant.withValues(alpha: 0.65),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
             ],
             Expanded(
               child: Text(
@@ -156,11 +159,11 @@ class ConversationTile extends StatelessWidget {
               fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.sm),
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            switchInCurve: Curves.easeOutBack,
-            switchOutCurve: Curves.easeIn,
+            duration: AppDurations.normal,
+            switchInCurve: AppCurves.spring,
+            switchOutCurve: AppCurves.standard,
             transitionBuilder: (Widget child, Animation<double> a) =>
                 ScaleTransition(scale: a, child: child),
             child: unread
@@ -213,21 +216,11 @@ class _Avatar extends StatelessWidget {
         height: 52,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[
-              theme.colorScheme.primary,
-              theme.colorScheme.secondary,
-            ],
+          gradient: AppGradients.fromScheme(theme.colorScheme),
+          boxShadow: AppShadows.glow(
+            theme.colorScheme.primary,
+            opacity: 0.28,
           ),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: theme.colorScheme.primary.withValues(alpha: 0.2),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
         ),
         child: const Icon(Icons.bookmark, color: Colors.white, size: 24),
       );
@@ -291,19 +284,12 @@ class _UnreadBadge extends StatelessWidget {
     final String label = count > 99 ? '99+' : '$count';
     return Container(
       constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm - 1, vertical: AppSpacing.xxs),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(999),
-        boxShadow: muted
-            ? null
-            : <BoxShadow>[
-                BoxShadow(
-                  color: cs.primary.withValues(alpha: 0.28),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+        borderRadius: const BorderRadius.all(Radius.circular(AppRadius.pill)),
+        boxShadow: muted ? null : AppShadows.glow(cs.primary, opacity: 0.28),
       ),
       alignment: Alignment.center,
       child: Text(

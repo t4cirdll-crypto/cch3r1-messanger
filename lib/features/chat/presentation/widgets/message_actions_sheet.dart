@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../domain/entities/message_entity.dart';
 
 enum MessageAction {
@@ -57,6 +58,8 @@ class MessageActionsSheet extends StatelessWidget {
     final bool hasContent = !message.isDeleted &&
         (message.content ?? '').trim().isNotEmpty;
     final bool canDeleteForAll = isMine && !message.isDeleted;
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
 
     return SafeArea(
       child: Column(
@@ -65,24 +68,37 @@ class MessageActionsSheet extends StatelessWidget {
         children: <Widget>[
           if (!message.isDeleted)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: _quickEmojis
                       .map((String e) => Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: () {
-                                Navigator.of(context).pop();
-                                onPickEmoji(e);
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Text(
-                                  e,
-                                  style: const TextStyle(fontSize: 26),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xs,
+                            ),
+                            child: Material(
+                              color: scheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.5),
+                              shape: const StadiumBorder(),
+                              clipBehavior: Clip.antiAlias,
+                              child: InkWell(
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.pill),
+                                onTap: () {
+                                  Navigator.of(context).pop();
+                                  onPickEmoji(e);
+                                },
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.all(AppSpacing.sm),
+                                  child: Text(
+                                    e,
+                                    style: const TextStyle(fontSize: 26),
+                                  ),
                                 ),
                               ),
                             ),
@@ -91,7 +107,12 @@ class MessageActionsSheet extends StatelessWidget {
                 ),
               ),
             ),
-          if (!message.isDeleted) const Divider(height: 1),
+          if (!message.isDeleted)
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: scheme.outlineVariant.withValues(alpha: 0.5),
+            ),
           ListTile(
             leading: const Icon(Icons.reply),
             title: const Text(AppStrings.actionReply),
@@ -135,10 +156,13 @@ class MessageActionsSheet extends StatelessWidget {
           if (canDeleteForAll)
             ListTile(
               leading: Icon(Icons.delete_forever_outlined,
-                  color: Theme.of(context).colorScheme.error),
+                  color: scheme.error),
               title: Text(
                 AppStrings.actionDeleteForAll,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: scheme.error,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               onTap: () =>
                   Navigator.of(context).pop(MessageAction.deleteForAll),

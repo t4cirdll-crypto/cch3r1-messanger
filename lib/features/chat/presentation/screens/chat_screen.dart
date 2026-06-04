@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/providers/supabase_providers.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/services/notifications_listener.dart';
 import '../../../../core/utils/date_format.dart';
 import '../../../../core/utils/drafts_manager.dart';
@@ -112,8 +113,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     HapticFeedback.selectionClick();
     _scrollController.animateTo(
       0,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
+      duration: AppDurations.slow,
+      curve: AppCurves.standard,
     );
   }
 
@@ -183,8 +184,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     HapticFeedback.selectionClick();
     _scrollController.animateTo(
       targetOffset,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
+      duration: AppDurations.slow,
+      curve: AppCurves.standard,
     );
   }
 
@@ -471,12 +472,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     return ListView.builder(
                       controller: _scrollController,
                       reverse: true,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      padding:
+                          const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                       itemCount: visible.length + (data.isLoadingMore ? 1 : 0),
                       itemBuilder: (BuildContext _, int index) {
                         if (data.isLoadingMore && index == visible.length) {
                           return const Padding(
-                            padding: EdgeInsets.all(12),
+                            padding: EdgeInsets.all(AppSpacing.md),
                             child: Center(child: CircularProgressIndicator()),
                           );
                         }
@@ -492,15 +494,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           children: <Widget>[
                             if (showHeader)
                               Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: AppSpacing.sm),
                                 child: Center(
-                                  child: Text(
-                                    DateFormatter.messageDayHeader(
-                                      m.createdAt,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.md,
+                                      vertical: AppSpacing.xs,
                                     ),
-                                    style:
-                                        Theme.of(context).textTheme.bodySmall,
+                                    decoration: BoxDecoration(
+                                      color: cs.surfaceContainerHighest
+                                          .withValues(alpha: 0.7),
+                                      borderRadius: AppRadius.smAll,
+                                    ),
+                                    child: Text(
+                                      DateFormatter.messageDayHeader(
+                                        m.createdAt,
+                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: cs.onSurfaceVariant,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -530,16 +548,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   },
                 ),
                 Positioned(
-                  right: 12,
-                  bottom: 12,
+                  right: AppSpacing.md,
+                  bottom: AppSpacing.md,
                   child: AnimatedSlide(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
+                    duration: AppDurations.normal,
+                    curve: AppCurves.standard,
                     offset: _showScrollToBottom
                         ? Offset.zero
                         : const Offset(0, 1.4),
                     child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 180),
+                      duration: AppDurations.fast,
                       opacity: _showScrollToBottom ? 1 : 0,
                       child: _ScrollToBottomFab(
                         onTap: _scrollToBottom,
@@ -560,6 +578,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Container(
             decoration: BoxDecoration(
               color: cs.surface,
+              border: Border(
+                top: BorderSide(
+                  color: cs.outlineVariant.withValues(alpha: 0.4),
+                ),
+              ),
               boxShadow: <BoxShadow>[
                 BoxShadow(
                   color: Colors.black.withValues(
@@ -572,11 +595,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
               ],
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xs, vertical: AppSpacing.xs),
             child: SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xs,
+                  AppSpacing.xs,
+                  AppSpacing.xs,
+                  AppSpacing.xs,
+                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: <Widget>[
@@ -599,8 +628,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         decoration: InputDecoration(
                           hintText: AppStrings.messageHint,
                           contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
+                            horizontal: AppSpacing.lg,
+                            vertical: AppSpacing.sm + AppSpacing.xxs,
                           ),
                           fillColor:
                               Theme.of(context).brightness == Brightness.light
@@ -609,24 +638,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     if (_hasText)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 2),
-                        child: CircleAvatar(
-                          radius: 22,
-                          backgroundColor: cs.primary,
-                          child: IconButton(
-                            tooltip: AppStrings.messageSend,
-                            onPressed: _uploading ? null : _send,
-                            icon: const Icon(Icons.send_rounded,
-                                size: 18, color: Colors.white),
+                        padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
+                        child: AnimatedScale(
+                          scale: _hasText ? 1 : 0.8,
+                          duration: AppDurations.fast,
+                          curve: AppCurves.spring,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: AppShadows.glow(cs.primary,
+                                  opacity: 0.35),
+                            ),
+                            child: CircleAvatar(
+                              radius: 22,
+                              backgroundColor: cs.primary,
+                              child: IconButton(
+                                tooltip: AppStrings.messageSend,
+                                onPressed: _uploading ? null : _send,
+                                icon: const Icon(Icons.send_rounded,
+                                    size: 18, color: Colors.white),
+                              ),
+                            ),
                           ),
                         ),
                       )
                     else
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 2),
+                        padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
                         child: VoiceRecorderButton(
                           onStateChanged: (VoiceRecorderState s) {
                             if (mounted) setState(() => _voiceState = s);
@@ -694,7 +735,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
               child: Text(
                 AppStrings.muteTitle,
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -757,21 +799,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
               child: Text(
                 'Исчезающие сообщения',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: Text(
                 'Новые сообщения автоматически удалятся у всех участников '
                 'через выбранное время.',
                 style: TextStyle(fontSize: 13),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             for (final ({String label, int seconds}) o in options)
               ListTile(
                 leading: Icon(
@@ -824,7 +867,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             foregroundColor: Theme.of(context).colorScheme.onPrimary,
             child: const Icon(Icons.bookmark, size: 18),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           const Expanded(
             child: Text(
               'Saved Messages',
@@ -853,7 +896,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 title.isEmpty ? '?' : title.substring(0, 1).toUpperCase(),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -898,7 +941,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     return InkWell(
       onTap: () => UserProfileSheet.show(context, peer.id),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: AppRadius.xsAll,
       child: Row(
         children: <Widget>[
           UserAvatar(
@@ -908,7 +951,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 : '?',
             avatarUrl: peer.avatarUrl,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -929,7 +972,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       ),
                     ),
                     if (peer.rank != null && peer.rank!.isNotEmpty) ...[
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpacing.xs + 2),
                       Builder(
                         builder: (BuildContext ctx) {
                           final String r = peer.rank!.toUpperCase();
@@ -956,10 +999,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           }
                           return Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 5, vertical: 1.5),
+                                horizontal: AppSpacing.xs + 1, vertical: 1.5),
                             decoration: BoxDecoration(
                               color: bg,
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: AppRadius.xsAll,
                               border: Border.all(color: border, width: 1),
                             ),
                             child: Text(
@@ -1063,7 +1106,8 @@ class _PinnedBannerState extends ConsumerState<_PinnedBanner> {
           widget.onJumpToMessage(current);
         },
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
           child: Row(
             children: <Widget>[
               // Если pin-ов несколько, рисуем вертикальную «лестницу» —
@@ -1076,7 +1120,7 @@ class _PinnedBannerState extends ConsumerState<_PinnedBanner> {
                 )
               else
                 Icon(Icons.push_pin, color: cs.primary, size: 18),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1112,7 +1156,7 @@ class _PinnedBannerState extends ConsumerState<_PinnedBanner> {
               ),
               if (total > 1)
                 Padding(
-                  padding: const EdgeInsets.only(left: 8),
+                  padding: const EdgeInsets.only(left: AppSpacing.sm),
                   child: Text(
                     '${idx + 1}/$total',
                     style: Theme.of(context)
@@ -1181,21 +1225,26 @@ class _ScrollToBottomFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
-    return Material(
-      color: cs.surfaceContainerHighest,
-      shape: const CircleBorder(),
-      elevation: 4,
-      shadowColor: cs.shadow.withValues(alpha: 0.15),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: cs.onSurface,
-            size: 24,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: AppShadows.md(Theme.of(context).brightness),
+      ),
+      child: Material(
+        color: cs.surfaceContainerHighest,
+        shape: const CircleBorder(),
+        elevation: 0,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: cs.onSurface,
+              size: 24,
+            ),
           ),
         ),
       ),
@@ -1215,7 +1264,7 @@ class _ChatEmptyState extends StatelessWidget {
     final ColorScheme cs = theme.colorScheme;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
@@ -1224,29 +1273,23 @@ class _ChatEmptyState extends StatelessWidget {
               height: 96,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: <Color>[
-                    cs.primaryContainer,
-                    cs.tertiaryContainer,
-                  ],
-                ),
+                gradient: AppGradients.brand,
+                boxShadow: AppShadows.glow(cs.primary, opacity: 0.28),
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.chat_bubble_outline_rounded,
                 size: 44,
-                color: cs.onPrimaryContainer,
+                color: Colors.white,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.xl),
             Text(
               title,
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium
                   ?.copyWith(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.xs + 2),
             Text(
               subtitle,
               textAlign: TextAlign.center,

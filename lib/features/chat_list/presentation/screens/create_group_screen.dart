@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../search_user/presentation/providers/search_providers.dart';
 import '../../domain/entities/conversation_entity.dart';
@@ -122,7 +123,12 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       body: Column(
         children: <Widget>[
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.xs,
+            ),
             child: TextField(
               controller: _titleCtrl,
               maxLength: 64,
@@ -137,7 +143,9 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
               height: 80,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                ),
                 children: _selected.values
                     .map((ProfileEntity p) => _SelectedChip(
                           profile: p,
@@ -147,7 +155,12 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              AppSpacing.xs,
+            ),
             child: TextField(
               controller: _searchCtrl,
               onChanged: _onSearchChanged,
@@ -157,14 +170,19 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Align(
             alignment: Alignment.centerLeft,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+              ),
               child: Text(
                 'Выбрано: ${_selected.length}',
-                style: theme.textTheme.bodySmall,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -176,7 +194,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                 if (users.isEmpty) {
                   return const Center(
                     child: Padding(
-                      padding: EdgeInsets.all(32),
+                      padding: EdgeInsets.all(AppSpacing.xxxl),
                       child: Text(
                         'Найдите пользователей по нику и отметьте их.',
                         textAlign: TextAlign.center,
@@ -194,6 +212,10 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                       value: selected,
                       onChanged: (_) => _toggleSelect(p),
                       controlAffinity: ListTileControlAffinity.trailing,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: AppSpacing.xxs,
+                      ),
                       secondary: CircleAvatar(
                         radius: 22,
                         backgroundColor: theme.colorScheme.primaryContainer,
@@ -210,8 +232,18 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                               )
                             : null,
                       ),
-                      title: Text(p.effectiveName),
-                      subtitle: Text('@${p.username}'),
+                      title: Text(
+                        p.effectiveName,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '@${p.username}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     );
                   },
                 );
@@ -233,48 +265,74 @@ class _SelectedChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final bool hasAvatar = profile.avatarUrl != null;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       child: Column(
         children: <Widget>[
           Stack(
+            clipBehavior: Clip.none,
             children: <Widget>[
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: theme.colorScheme.primaryContainer,
-                backgroundImage: profile.avatarUrl != null
-                    ? CachedNetworkImageProvider(profile.avatarUrl!)
-                    : null,
-                child: profile.avatarUrl == null
-                    ? Text(
-                        profile.effectiveName.isEmpty
-                            ? '?'
-                            : profile.effectiveName
-                                .substring(0, 1)
-                                .toUpperCase(),
-                      )
-                    : null,
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: hasAvatar ? null : AppGradients.brand,
+                  boxShadow: AppShadows.sm(theme.brightness),
+                ),
+                child: CircleAvatar(
+                  radius: 24,
+                  backgroundColor: hasAvatar
+                      ? theme.colorScheme.primaryContainer
+                      : Colors.transparent,
+                  backgroundImage: hasAvatar
+                      ? CachedNetworkImageProvider(profile.avatarUrl!)
+                      : null,
+                  child: hasAvatar
+                      ? null
+                      : Text(
+                          profile.effectiveName.isEmpty
+                              ? '?'
+                              : profile.effectiveName
+                                  .substring(0, 1)
+                                  .toUpperCase(),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
               ),
               Positioned(
-                top: -4,
-                right: -4,
+                top: -AppSpacing.xs,
+                right: -AppSpacing.xs,
                 child: InkWell(
                   onTap: onRemove,
                   customBorder: const CircleBorder(),
-                  child: CircleAvatar(
-                    radius: 10,
-                    backgroundColor: theme.colorScheme.error,
-                    child: Icon(
-                      Icons.close,
-                      size: 14,
-                      color: theme.colorScheme.onError,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: AppShadows.glow(
+                        theme.colorScheme.error,
+                        opacity: 0.4,
+                      ),
+                    ),
+                    child: CircleAvatar(
+                      radius: 10,
+                      backgroundColor: theme.colorScheme.error,
+                      child: Icon(
+                        Icons.close,
+                        size: 14,
+                        color: theme.colorScheme.onError,
+                      ),
                     ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           SizedBox(
             width: 56,
             child: Text(
@@ -282,7 +340,9 @@ class _SelectedChip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: theme.textTheme.labelSmall,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ],

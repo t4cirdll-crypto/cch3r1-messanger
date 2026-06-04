@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../../core/theme/app_tokens.dart';
 import '../../domain/entities/message_entity.dart';
 import '../providers/chat_providers.dart';
 import '../services/attachment_url_cache.dart';
@@ -44,58 +45,88 @@ class AttachmentVideo extends ConsumerWidget {
     bool isError = false,
     String? label,
   }) {
-    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
+    final bool isReady = !isLoading && !isError;
     final double w = maxWidth.clamp(160, 320);
-    return Container(
-      width: w,
-      height: w * 9 / 16,
-      color: Colors.black87,
-      alignment: Alignment.center,
-      child: Stack(
+    return ClipRRect(
+      borderRadius: AppRadius.mdAll,
+      child: Container(
+        width: w,
+        height: w * 9 / 16,
         alignment: Alignment.center,
-        children: <Widget>[
-          if (isLoading)
-            const SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-          else if (isError)
-            const Icon(Icons.error_outline, color: Colors.white, size: 36)
-          else
-            Container(
-              decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: 0.85),
-                shape: BoxShape.circle,
-              ),
-              padding: const EdgeInsets.all(12),
-              child: const Icon(
-                Icons.play_arrow,
-                color: Colors.white,
-                size: 32,
-              ),
-            ),
-          if (label != null && !isLoading && !isError)
-            Positioned(
-              right: 8,
-              bottom: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(4),
+        decoration: BoxDecoration(
+          borderRadius: AppRadius.mdAll,
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[Color(0xFF1A1A1F), Color(0xFF050507)],
+          ),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.06),
+          ),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: <Widget>[
+            if (isLoading)
+              const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
                 ),
-                child: Text(
-                  label,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+              )
+            else if (isError)
+              const Icon(Icons.error_outline, color: Colors.white, size: 36)
+            else
+              AnimatedScale(
+                scale: 1,
+                duration: AppDurations.normal,
+                curve: AppCurves.spring,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.85),
+                    shape: BoxShape.circle,
+                    boxShadow: AppShadows.glow(scheme.primary, opacity: 0.45),
+                  ),
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: const Icon(
+                    Icons.play_arrow,
+                    color: Colors.white,
+                    size: 32,
+                  ),
                 ),
               ),
-            ),
-        ],
+            if (label != null && isReady)
+              Positioned(
+                right: AppSpacing.sm,
+                bottom: AppSpacing.sm,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xxs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    borderRadius: AppRadius.xsAll,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                  child: Text(
+                    label,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -171,10 +202,18 @@ class _VideoPlayerScreenState extends State<_VideoPlayerScreen> {
                   c.value.isPlaying ? c.pause() : c.play();
                 });
               },
-              child: Icon(
-                _controller!.value.isPlaying
-                    ? Icons.pause
-                    : Icons.play_arrow,
+              child: AnimatedSwitcher(
+                duration: AppDurations.fast,
+                switchInCurve: AppCurves.standard,
+                switchOutCurve: AppCurves.standard,
+                transitionBuilder: (Widget child, Animation<double> anim) =>
+                    ScaleTransition(scale: anim, child: child),
+                child: Icon(
+                  _controller!.value.isPlaying
+                      ? Icons.pause
+                      : Icons.play_arrow,
+                  key: ValueKey<bool>(_controller!.value.isPlaying),
+                ),
               ),
             ),
     );

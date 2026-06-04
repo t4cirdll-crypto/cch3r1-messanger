@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/date_format.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
@@ -73,6 +74,7 @@ class UserProfileSheet extends ConsumerWidget {
     return showDialog<String>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.xlAll),
         title: Text(label),
         content: TextField(controller: c, autofocus: true),
         actions: <Widget>[
@@ -93,47 +95,55 @@ class UserProfileSheet extends ConsumerWidget {
         ref.watch(userProfileProvider(userId));
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final bool isDark = theme.brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(AppRadius.xxl)),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
+            color: Colors.black.withValues(alpha: isDark ? 0.38 : 0.12),
+            blurRadius: 24,
+            offset: const Offset(0, -8),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xxl,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           // Drag handle
           Container(
             width: 40,
             height: 4,
             decoration: BoxDecoration(
               color: cs.outlineVariant,
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           profileState.when(
             loading: () => const Padding(
               padding: EdgeInsets.symmetric(vertical: 64),
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (Object error, StackTrace _) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+              padding: const EdgeInsets.symmetric(
+                  vertical: 48, horizontal: AppSpacing.xxl),
               child: Column(
                 children: <Widget>[
                   const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Text(
                     'Не удалось загрузить профиль: $error',
                     textAlign: TextAlign.center,
@@ -150,7 +160,8 @@ class UserProfileSheet extends ConsumerWidget {
                 children: <Widget>[
                   // Avatar and User details
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
                     child: Column(
                       children: <Widget>[
                         UserAvatar(
@@ -158,7 +169,7 @@ class UserProfileSheet extends ConsumerWidget {
                           initial: initials,
                           avatarUrl: profile.avatarUrl,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.lg),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
@@ -168,20 +179,22 @@ class UserProfileSheet extends ConsumerWidget {
                                 profile.effectiveName,
                                 style: theme.textTheme.headlineSmall?.copyWith(
                                   fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.5,
                                 ),
                                 textAlign: TextAlign.center,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if (profile.rank != null && profile.rank!.isNotEmpty) ...[
-                              const SizedBox(width: 8),
+                            if (profile.rank != null && profile.rank!.isNotEmpty) ...<Widget>[
+                              const SizedBox(width: AppSpacing.sm),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
+                                    horizontal: AppSpacing.sm,
+                                    vertical: AppSpacing.xxs),
                                 decoration: BoxDecoration(
                                   color: _getRankColor(profile.rank!, cs)
                                       .withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(AppRadius.pill),
                                   border: Border.all(
                                     color: _getRankColor(profile.rank!, cs)
                                         .withValues(alpha: 0.4),
@@ -190,9 +203,10 @@ class UserProfileSheet extends ConsumerWidget {
                                 ),
                                 child: Text(
                                   profile.rank!.toUpperCase(),
-                                  style: TextStyle(
+                                  style: theme.textTheme.labelSmall?.copyWith(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
                                     color: _getRankColor(profile.rank!, cs),
                                   ),
                                 ),
@@ -200,7 +214,7 @@ class UserProfileSheet extends ConsumerWidget {
                             ],
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: AppSpacing.xs + AppSpacing.xxs),
                         Text(
                           profile.isOnline
                               ? AppStrings.online
@@ -221,8 +235,8 @@ class UserProfileSheet extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  const Divider(height: 1),
+                  const SizedBox(height: AppSpacing.xxl),
+                  Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
                   // Information List
                   ListView(
                     shrinkWrap: true,
@@ -256,30 +270,37 @@ class UserProfileSheet extends ConsumerWidget {
                         ),
                     ],
                   ),
-                  const Divider(height: 1),
-                  const SizedBox(height: 20),
+                  Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
+                  const SizedBox(height: AppSpacing.xl),
                   // Message Button
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: cs.primary,
-                          foregroundColor: cs.onPrimary,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: AppRadius.mdAll,
+                        boxShadow: AppShadows.glow(cs.primary, opacity: 0.28),
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: cs.primary,
+                            foregroundColor: cs.onPrimary,
+                            elevation: 0,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: AppRadius.mdAll,
+                            ),
                           ),
-                        ),
-                        onPressed: () => _startConversation(context, ref),
-                        icon: const Icon(Icons.chat_bubble_outline),
-                        label: const Text(
-                          'Написать сообщение',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                          onPressed: () => _startConversation(context, ref),
+                          icon: const Icon(Icons.chat_bubble_outline),
+                          label: Text(
+                            'Написать сообщение',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: cs.onPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -301,16 +322,20 @@ class UserProfileSheet extends ConsumerWidget {
                         data: (bool isBanned) => Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
-                            const SizedBox(height: 24),
-                            const Divider(height: 1),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.xxl),
+                            Divider(
+                                height: 1,
+                                color:
+                                    cs.outlineVariant.withValues(alpha: 0.5)),
+                            const SizedBox(height: AppSpacing.lg),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.xxl),
                               child: Row(
                                 children: <Widget>[
                                   Icon(Icons.shield_outlined,
                                       color: cs.primary, size: 20),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(width: AppSpacing.sm),
                                   Text(
                                     'Администрирование',
                                     style: theme.textTheme.titleMedium?.copyWith(
@@ -321,12 +346,13 @@ class UserProfileSheet extends ConsumerWidget {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: AppSpacing.md),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.xxl),
                               child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
+                                spacing: AppSpacing.sm,
+                                runSpacing: AppSpacing.sm,
                                 children: <Widget>[
                                   ActionChip(
                                     avatar:

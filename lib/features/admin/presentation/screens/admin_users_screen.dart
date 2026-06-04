@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:cch3r1_messanger/core/theme/app_tokens.dart';
 import '../../data/admin_repository.dart';
 import '../../domain/entities/admin_entities.dart';
 import '../providers/admin_providers.dart';
@@ -31,13 +32,25 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
       body: Column(
         children: <Widget>[
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: TextField(
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search),
                 hintText: 'Поиск по username / display name',
                 isDense: true,
-                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.md,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: AppRadius.mdAll,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: AppRadius.mdAll,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: AppRadius.mdAll,
+                ),
               ),
               onChanged: (String v) => setState(() => _query = v.trim().toLowerCase()),
             ),
@@ -82,10 +95,25 @@ class _UserTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListTile(
-      leading: CircleAvatar(
-        child: Text((user.displayName ?? user.username)
-            .substring(0, 1)
-            .toUpperCase()),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.xs,
+      ),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: AppGradients.brand,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          (user.displayName ?? user.username).substring(0, 1).toUpperCase(),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
       ),
       title: Row(
         children: <Widget>[
@@ -101,7 +129,7 @@ class _UserTile extends ConsumerWidget {
                       )),
                 ),
                 if (user.rank != null && user.rank!.isNotEmpty) ...[
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Builder(
                     builder: (BuildContext ctx) {
                       final String r = user.rank!.toUpperCase();
@@ -127,19 +155,26 @@ class _UserTile extends ConsumerWidget {
                         text = cs.primary;
                       }
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xxs,
+                        ),
                         decoration: BoxDecoration(
                           color: bg,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: AppRadius.xsAll,
                           border: Border.all(color: border, width: 1),
                         ),
                         child: Text(
                           user.rank!.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: text,
-                          ),
+                          style: Theme.of(ctx)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
+                                color: text,
+                              ),
                         ),
                       );
                     },
@@ -149,7 +184,15 @@ class _UserTile extends ConsumerWidget {
             ),
           ),
           if (user.isOnline)
-            const Icon(Icons.circle, color: Colors.green, size: 10),
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: Colors.green,
+                shape: BoxShape.circle,
+                boxShadow: AppShadows.glow(Colors.green, opacity: 0.5),
+              ),
+            ),
         ],
       ),
       subtitle: Text(
@@ -228,6 +271,9 @@ class _UserTile extends ConsumerWidget {
           final bool? ok = await showDialog<bool>(
             context: context,
             builder: (BuildContext ctx) => AlertDialog(
+              shape: const RoundedRectangleBorder(
+                borderRadius: AppRadius.xlAll,
+              ),
               title: const Text('Удалить пользователя?'),
               content: Text(
                 'Будет удалён @${user.username} и все его сообщения. '
@@ -267,8 +313,19 @@ Future<String?> _askText(BuildContext context, String label,
   return showDialog<String>(
     context: context,
     builder: (BuildContext ctx) => AlertDialog(
+      shape: const RoundedRectangleBorder(
+        borderRadius: AppRadius.xlAll,
+      ),
       title: Text(label),
-      content: TextField(controller: c, autofocus: true),
+      content: TextField(
+        controller: c,
+        autofocus: true,
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(
+            borderRadius: AppRadius.mdAll,
+          ),
+        ),
+      ),
       actions: <Widget>[
         TextButton(
             onPressed: () => Navigator.pop(ctx),

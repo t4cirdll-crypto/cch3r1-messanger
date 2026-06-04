@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
+import '../../../../core/theme/app_tokens.dart';
 import '../../domain/entities/message_entity.dart';
 import '../providers/chat_providers.dart';
 import '../services/attachment_url_cache.dart';
@@ -98,47 +99,67 @@ class _AttachmentAudioPlayerState
         ? 0
         : (_position.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0);
     final bool playing = _player?.playing ?? false;
+    final ThemeData theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.sm,
+      ),
       width: 220,
       child: Row(
         children: <Widget>[
           IconButton(
             visualDensity: VisualDensity.compact,
             onPressed: _loading ? null : _toggle,
-            icon: _loading
-                ? SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
+            icon: AnimatedSwitcher(
+              duration: AppDurations.fast,
+              switchInCurve: AppCurves.standard,
+              switchOutCurve: AppCurves.standard,
+              transitionBuilder: (Widget child, Animation<double> animation) =>
+                  ScaleTransition(scale: animation, child: child),
+              child: _loading
+                  ? SizedBox(
+                      key: const ValueKey<String>('audio-loading'),
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: widget.foreground,
+                      ),
+                    )
+                  : Icon(
+                      _error != null
+                          ? Icons.error_outline
+                          : (playing ? Icons.pause : Icons.play_arrow),
+                      key: ValueKey<String>(
+                        _error != null
+                            ? 'audio-error'
+                            : (playing ? 'audio-pause' : 'audio-play'),
+                      ),
                       color: widget.foreground,
                     ),
-                  )
-                : Icon(
-                    _error != null
-                        ? Icons.error_outline
-                        : (playing ? Icons.pause : Icons.play_arrow),
-                    color: widget.foreground,
-                  ),
+            ),
           ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: widget.foreground.withValues(alpha: 0.25),
-                  color: widget.foreground,
-                  minHeight: 3,
+                ClipRRect(
+                  borderRadius: AppRadius.xsAll,
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: widget.foreground.withValues(alpha: 0.25),
+                    color: widget.foreground,
+                    minHeight: 3,
+                  ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
-                  _formatDuration(_position == Duration.zero ? total : _position),
-                  style: TextStyle(
+                  _formatDuration(
+                      _position == Duration.zero ? total : _position),
+                  style: theme.textTheme.labelSmall?.copyWith(
                     color: widget.foreground.withValues(alpha: 0.85),
-                    fontSize: 12,
                   ),
                 ),
               ],

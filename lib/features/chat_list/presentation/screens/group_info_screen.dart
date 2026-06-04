@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/providers/supabase_providers.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../profile/presentation/widgets/user_profile_sheet.dart';
 import '../../../search_user/presentation/providers/search_providers.dart';
@@ -193,35 +194,61 @@ class _GroupInfoScreenState extends ConsumerState<GroupInfoScreen> {
               (me.role == MemberRole.owner || me.role == MemberRole.admin);
 
           return ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.lg,
+            ),
             children: <Widget>[
               // Group Details Card
               GlassmorphicCard(
                 child: Column(
                   children: <Widget>[
                     Center(
-                      child: CircleAvatar(
-                        radius: 48,
-                        backgroundColor: theme.colorScheme.secondaryContainer,
-                        child: Text(
-                          conv.effectiveTitle.isEmpty
-                              ? '?'
-                              : conv.effectiveTitle.substring(0, 1).toUpperCase(),
-                          style: theme.textTheme.headlineMedium,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: AppShadows.glow(
+                            theme.colorScheme.primary,
+                            opacity: 0.22,
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          radius: 48,
+                          backgroundColor:
+                              theme.colorScheme.secondaryContainer,
+                          child: Text(
+                            conv.effectiveTitle.isEmpty
+                                ? '?'
+                                : conv.effectiveTitle
+                                    .substring(0, 1)
+                                    .toUpperCase(),
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              color: theme.colorScheme.onSecondaryContainer,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(
                         conv.effectiveTitle,
                         textAlign: TextAlign.center,
-                        style: theme.textTheme.titleLarge,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      subtitle: Text(
-                        '${conv.members.length} участник(ов)',
-                        textAlign: TextAlign.center,
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.xxs),
+                        child: Text(
+                          '${conv.members.length} участник(ов)',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                       ),
                       trailing: canEdit
                           ? IconButton(
@@ -235,11 +262,11 @@ class _GroupInfoScreenState extends ConsumerState<GroupInfoScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              
+              const SizedBox(height: AppSpacing.xl),
+
               // Members List Card
               GlassmorphicCard(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 child: Column(
                   children: <Widget>[
                     if (canEdit)
@@ -248,7 +275,15 @@ class _GroupInfoScreenState extends ConsumerState<GroupInfoScreen> {
                         title: const Text('Добавить участников'),
                         onTap: _busy ? null : () => _addMembers(conv),
                       ),
-                    if (canEdit) const Divider(),
+                    if (canEdit)
+                      Divider(
+                        height: 1,
+                        thickness: 1,
+                        indent: AppSpacing.lg,
+                        endIndent: AppSpacing.lg,
+                        color: theme.colorScheme.outlineVariant
+                            .withValues(alpha: 0.4),
+                      ),
                     ...conv.members.map((ConversationMember m) => _MemberTile(
                           member: m,
                           isMe: m.profile.id == uid,
@@ -258,21 +293,25 @@ class _GroupInfoScreenState extends ConsumerState<GroupInfoScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              
+              const SizedBox(height: AppSpacing.xl),
+
               // Actions Card
               GlassmorphicCard(
                 padding: EdgeInsets.zero,
                 child: ListTile(
-                  leading: Icon(Icons.exit_to_app, color: theme.colorScheme.error),
+                  leading: Icon(Icons.exit_to_app,
+                      color: theme.colorScheme.error),
                   title: Text(
                     'Выйти из группы',
-                    style: TextStyle(color: theme.colorScheme.error),
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: theme.colorScheme.error,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   onTap: _busy ? null : _leave,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.xxl),
             ],
           );
         },
@@ -333,17 +372,19 @@ class _MemberTile extends StatelessWidget {
           ),
           if (member.role != MemberRole.member)
             Padding(
-              padding: const EdgeInsets.only(left: 8),
+              padding: const EdgeInsets.only(left: AppSpacing.sm),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 2,
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xxs,
                 ),
                 decoration: BoxDecoration(
                   color: member.role == MemberRole.owner
                       ? theme.colorScheme.primary
                       : theme.colorScheme.tertiary,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: const BorderRadius.all(
+                    Radius.circular(AppRadius.pill),
+                  ),
                 ),
                 child: Text(
                   member.role == MemberRole.owner ? 'OWNER' : 'ADMIN',
@@ -352,6 +393,7 @@ class _MemberTile extends StatelessWidget {
                         ? theme.colorScheme.onPrimary
                         : theme.colorScheme.onTertiary,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
@@ -412,21 +454,35 @@ class _AddMembersSheetState extends ConsumerState<_AddMembersSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.md),
             Container(
-              width: 36,
+              width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: theme.colorScheme.outline,
-                borderRadius: BorderRadius.circular(2),
+                color: theme.colorScheme.outlineVariant,
+                borderRadius: const BorderRadius.all(
+                  Radius.circular(AppRadius.pill),
+                ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.md),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.sm,
+              ),
               child: Row(
                 children: <Widget>[
-                  const Expanded(child: Text('Добавить участников')),
+                  Expanded(
+                    child: Text(
+                      'Добавить участников',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                   TextButton(
                     onPressed: _selected.isEmpty
                         ? null
@@ -438,7 +494,7 @@ class _AddMembersSheetState extends ConsumerState<_AddMembersSheet> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: TextField(
                 controller: _ctrl,
                 autofocus: true,
@@ -450,7 +506,7 @@ class _AddMembersSheetState extends ConsumerState<_AddMembersSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Flexible(
               child: results.when(
                 loading: () =>
@@ -463,7 +519,7 @@ class _AddMembersSheetState extends ConsumerState<_AddMembersSheet> {
                       .toList();
                   if (filtered.isEmpty) {
                     return const Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: EdgeInsets.all(AppSpacing.xxl),
                       child: Text('Никого не найдено'),
                     );
                   }

@@ -1,3 +1,4 @@
+import 'package:cch3r1_messanger/core/theme/app_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,23 +25,28 @@ class AdminHomeScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(adminStatsProvider),
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           children: <Widget>[
             stats.when(
               loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
                 child: Center(child: CircularProgressIndicator()),
               ),
               error: (Object err, StackTrace _) => Card(
                 color: Theme.of(context).colorScheme.errorContainer,
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text('Ошибка: $err'),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Text(
+                    'Ошибка: $err',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                    ),
+                  ),
                 ),
               ),
               data: (AdminStats s) => _StatsGrid(stats: s),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             _SectionTile(
               icon: Icons.people_outline,
               title: 'Пользователи',
@@ -73,6 +79,7 @@ class _StatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
     final List<_Stat> items = <_Stat>[
       _Stat('Юзеры', stats.usersTotal, Icons.people_outline),
       _Stat('Онлайн', stats.usersOnline, Icons.circle, color: Colors.green),
@@ -83,30 +90,46 @@ class _StatsGrid extends StatelessWidget {
       _Stat('За 24ч', stats.messagesToday, Icons.today_outlined),
     ];
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
       children: items
           .map((_Stat e) => SizedBox(
-                width: (MediaQuery.of(context).size.width - 16 * 2 - 8) / 2,
+                width: (MediaQuery.of(context).size.width -
+                        AppSpacing.lg * 2 -
+                        AppSpacing.sm) /
+                    2,
                 child: Card(
                   margin: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: AppRadius.mdAll,
+                    side: BorderSide(
+                      color: theme.colorScheme.outlineVariant
+                          .withValues(alpha: 0.5),
+                    ),
+                  ),
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(AppSpacing.md),
                     child: Row(
                       children: <Widget>[
                         Icon(e.icon, color: e.color),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              Text(e.title,
-                                  style:
-                                      Theme.of(context).textTheme.bodySmall),
-                              Text('${e.value}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge),
+                              Text(
+                                e.title,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.xxs),
+                              Text(
+                                '${e.value}',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ],
                           ),
                         ),

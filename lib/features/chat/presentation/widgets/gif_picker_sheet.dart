@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../config/giphy_config.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../data/datasources/giphy_service.dart';
 
 /// Bottom sheet с поиском по Giphy. Возвращает выбранный [GiphyGif] или null.
@@ -68,18 +69,43 @@ class _GifPickerViewState extends State<_GifPickerView> {
     if (!GiphyConfig.isEnabled) {
       return const _DisabledHint();
     }
+    final ColorScheme scheme = Theme.of(context).colorScheme;
     return Column(
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.xs,
+            AppSpacing.lg,
+            AppSpacing.sm,
+          ),
           child: TextField(
             controller: _query,
             autofocus: false,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
               hintText: 'Поиск GIF…',
-              border: OutlineInputBorder(),
+              filled: true,
+              fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
               isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.md,
+              ),
+              border: const OutlineInputBorder(
+                borderRadius: AppRadius.mdAll,
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: AppRadius.mdAll,
+                borderSide: BorderSide(
+                  color: scheme.outlineVariant.withValues(alpha: 0.6),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: AppRadius.mdAll,
+                borderSide: BorderSide(color: scheme.primary, width: 1.5),
+              ),
             ),
             onChanged: _onSearchChanged,
           ),
@@ -94,7 +120,7 @@ class _GifPickerViewState extends State<_GifPickerView> {
               if (snap.hasError) {
                 return Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(AppSpacing.xxl),
                     child: Text(
                       'Ошибка загрузки GIF: ${snap.error}',
                       textAlign: TextAlign.center,
@@ -108,12 +134,17 @@ class _GifPickerViewState extends State<_GifPickerView> {
               }
               return GridView.builder(
                 controller: widget.scrollController,
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.sm,
+                  0,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                ),
                 gridDelegate:
                     const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
-                  mainAxisSpacing: 6,
-                  crossAxisSpacing: 6,
+                  mainAxisSpacing: AppSpacing.sm,
+                  crossAxisSpacing: AppSpacing.sm,
                   childAspectRatio: 1,
                 ),
                 itemCount: items.length,
@@ -130,27 +161,64 @@ class _GifPickerViewState extends State<_GifPickerView> {
   }
 }
 
-class _GifTile extends StatelessWidget {
+class _GifTile extends StatefulWidget {
   const _GifTile({required this.gif, required this.onTap});
   final GiphyGif gif;
   final VoidCallback onTap;
 
   @override
+  State<_GifTile> createState() => _GifTileState();
+}
+
+class _GifTileState extends State<_GifTile> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed == value) {
+      return;
+    }
+    setState(() => _pressed = value);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: CachedNetworkImage(
-          imageUrl: gif.previewUrl,
-          fit: BoxFit.cover,
-          placeholder: (BuildContext c, _) => Container(
-            color:
-                Theme.of(context).colorScheme.surfaceContainerHighest,
-          ),
-          errorWidget: (BuildContext c, _, __) => const Icon(
-            Icons.broken_image_outlined,
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final Brightness brightness = Theme.of(context).brightness;
+    return AnimatedScale(
+      scale: _pressed ? 0.95 : 1,
+      duration: AppDurations.instant,
+      curve: AppCurves.standard,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: AppRadius.smAll,
+          boxShadow: AppShadows.sm(brightness),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: widget.onTap,
+            onHighlightChanged: _setPressed,
+            borderRadius: AppRadius.smAll,
+            child: ClipRRect(
+              borderRadius: AppRadius.smAll,
+              child: CachedNetworkImage(
+                imageUrl: widget.gif.previewUrl,
+                fit: BoxFit.cover,
+                placeholder: (BuildContext c, _) => DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: AppGradients.fromScheme(scheme),
+                  ),
+                  child: const SizedBox.expand(),
+                ),
+                errorWidget: (BuildContext c, _, __) => ColoredBox(
+                  color: scheme.surfaceContainerHighest,
+                  child: Icon(
+                    Icons.broken_image_outlined,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -164,7 +232,7 @@ class _DisabledHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Padding(
-      padding: EdgeInsets.all(24),
+      padding: EdgeInsets.all(AppSpacing.xxl),
       child: Center(
         child: Text(
           'GIF-поиск недоступен: пересоберите APK с '

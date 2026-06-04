@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/providers/supabase_providers.dart';
 import '../../../../core/services/notifications_listener.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/widgets/glass_widgets.dart';
 import '../../../../services/connection_service.dart';
 import '../../domain/entities/conversation_entity.dart';
@@ -61,13 +62,16 @@ class ChatListScreen extends ConsumerWidget {
             Container(
               width: double.infinity,
               color: Theme.of(context).colorScheme.errorContainer,
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+              padding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.sm - AppSpacing.xxs,
+                horizontal: AppSpacing.lg,
+              ),
               child: Text(
                 AppStrings.offlineMode,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onErrorContainer,
-                ),
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                    ),
               ),
             ),
           Expanded(
@@ -80,10 +84,19 @@ class ChatListScreen extends ConsumerWidget {
                     return const _ChatListEmpty();
                   }
                   return ListView.separated(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
+                    ),
                     itemCount: list.length,
-                    separatorBuilder: (_, __) =>
-                        const Divider(height: 1, indent: 76),
+                    separatorBuilder: (_, __) => Divider(
+                      height: 1,
+                      thickness: 1,
+                      indent: 76,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outlineVariant
+                          .withValues(alpha: 0.4),
+                    ),
                     itemBuilder: (BuildContext ctx, int i) {
                       final ConversationEntity c = list[i];
                       return ConversationTile(
@@ -100,14 +113,14 @@ class ChatListScreen extends ConsumerWidget {
                 loading: () => const ChatListSkeleton(),
                 error: (Object err, StackTrace st) => Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(AppSpacing.xxl),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
                         const Icon(Icons.error_outline, size: 48),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.md),
                         Text('$err', textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.lg),
                         FilledButton(
                           onPressed: () => ref
                               .read(chatListControllerProvider.notifier)
@@ -189,37 +202,32 @@ class _ChatListEmpty extends StatelessWidget {
       children: <Widget>[
         const SizedBox(height: 96),
         Center(
-          child: Container(
-            width: 112,
-            height: 112,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: <Color>[
-                  cs.primaryContainer,
-                  cs.secondaryContainer,
-                ],
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0.92, end: 1),
+            duration: AppDurations.slow,
+            curve: AppCurves.spring,
+            builder: (BuildContext context, double scale, Widget? child) {
+              return Transform.scale(scale: scale, child: child);
+            },
+            child: Container(
+              width: 112,
+              height: 112,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppGradients.fromScheme(cs),
+                boxShadow: AppShadows.glow(cs.primary, opacity: 0.22),
               ),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: cs.primary.withValues(alpha: 0.18),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.forum_outlined,
-              size: 56,
-              color: cs.onPrimaryContainer,
+              child: Icon(
+                Icons.forum_outlined,
+                size: 56,
+                color: cs.onPrimary,
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xxl),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxxl),
           child: Text(
             AppStrings.chatsEmpty,
             textAlign: TextAlign.center,
@@ -229,14 +237,17 @@ class _ChatListEmpty extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xxxl + AppSpacing.sm,
+          ),
           child: Text(
             'Нажмите кнопку «Написать», чтобы начать новый чат или создать группу.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: cs.onSurfaceVariant,
+              height: 1.4,
             ),
           ),
         ),

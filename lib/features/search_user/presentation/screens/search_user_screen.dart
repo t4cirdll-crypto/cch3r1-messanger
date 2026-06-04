@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../chat_list/domain/entities/conversation_entity.dart';
 import '../../../chat_list/presentation/providers/chat_list_providers.dart';
@@ -63,7 +64,12 @@ class _SearchUserScreenState extends ConsumerState<SearchUserScreen> {
       body: Column(
         children: <Widget>[
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              AppSpacing.sm,
+            ),
             child: TextField(
               controller: _controller,
               autofocus: true,
@@ -71,6 +77,13 @@ class _SearchUserScreenState extends ConsumerState<SearchUserScreen> {
               decoration: const InputDecoration(
                 hintText: AppStrings.searchHint,
                 prefixIcon: Icon(Icons.search),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.md,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: AppRadius.mdAll,
+                ),
               ),
             ),
           ),
@@ -82,17 +95,29 @@ class _SearchUserScreenState extends ConsumerState<SearchUserScreen> {
                 if (users.isEmpty) {
                   return const Center(
                     child: Padding(
-                      padding: EdgeInsets.all(32),
+                      padding: EdgeInsets.all(AppSpacing.xxxl),
                       child: Text(AppStrings.searchEmpty),
                     ),
                   );
                 }
                 return ListView.separated(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                   itemCount: users.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, __) => Divider(
+                    height: 1,
+                    indent: AppSpacing.xxl + AppSpacing.xxl,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outlineVariant
+                        .withValues(alpha: 0.5),
+                  ),
                   itemBuilder: (BuildContext _, int i) {
                     final ProfileEntity p = users[i];
                     return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: AppSpacing.xs,
+                      ),
                       onTap: () => UserProfileSheet.show(context, p.id),
                       leading: UserAvatar(
                         radius: 24,
@@ -110,40 +135,65 @@ class _SearchUserScreenState extends ConsumerState<SearchUserScreen> {
                             ),
                           ),
                           if (p.rank != null && p.rank!.isNotEmpty) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: p.rank!.toUpperCase() == 'BOT' ||
-                                        p.rank!.toUpperCase() == 'БОТ'
-                                    ? Colors.purple.withValues(alpha: 0.15)
-                                    : Theme.of(context)
-                                        .colorScheme
-                                        .primaryContainer,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: p.rank!.toUpperCase() == 'BOT' ||
-                                          p.rank!.toUpperCase() == 'БОТ'
-                                      ? Colors.purple.withValues(alpha: 0.4)
-                                      : Theme.of(context)
-                                          .colorScheme
-                                          .primary
-                                          .withValues(alpha: 0.4),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                p.rank!.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: p.rank!.toUpperCase() == 'BOT' ||
-                                          p.rank!.toUpperCase() == 'БОТ'
-                                      ? Colors.purple
-                                      : Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Builder(
+                              builder: (BuildContext context) {
+                                final bool isBot =
+                                    p.rank!.toUpperCase() == 'BOT' ||
+                                        p.rank!.toUpperCase() == 'БОТ';
+                                final ColorScheme scheme =
+                                    Theme.of(context).colorScheme;
+                                final Color accent = isBot
+                                    ? Colors.purple
+                                    : scheme.primary;
+                                return TweenAnimationBuilder<double>(
+                                  duration: AppDurations.fast,
+                                  curve: AppCurves.spring,
+                                  tween: Tween<double>(begin: 0.85, end: 1),
+                                  builder: (
+                                    BuildContext context,
+                                    double scale,
+                                    Widget? child,
+                                  ) {
+                                    return Transform.scale(
+                                      scale: scale,
+                                      child: child,
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.sm,
+                                      vertical: AppSpacing.xxs,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isBot
+                                          ? Colors.purple
+                                              .withValues(alpha: 0.15)
+                                          : scheme.primaryContainer,
+                                      borderRadius: AppRadius.xsAll,
+                                      border: Border.all(
+                                        color:
+                                            accent.withValues(alpha: 0.4),
+                                        width: 1,
+                                      ),
+                                      boxShadow:
+                                          AppShadows.glow(accent, opacity: 0.18),
+                                    ),
+                                    child: Text(
+                                      p.rank!.toUpperCase(),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                        color: accent,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ],

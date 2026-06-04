@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/date_format.dart';
 import '../../domain/entities/message_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
@@ -73,6 +74,8 @@ class _InChatSearchScreenState extends ConsumerState<InChatSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: TextField(
@@ -102,34 +105,104 @@ class _InChatSearchScreenState extends ConsumerState<InChatSearchScreen> {
       body: _busy
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text('$_error'))
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.xxl),
+                    child: Text(
+                      '$_error',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.error,
+                      ),
+                    ),
+                  ),
+                )
               : _results.isEmpty
                   ? Center(
                       child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text(
-                          _ctrl.text.trim().isEmpty
-                              ? AppStrings.searchInChatHint
-                              : AppStrings.searchNoResults,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium,
+                        padding: const EdgeInsets.all(AppSpacing.xxl),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: scheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.6),
+                                borderRadius: AppRadius.xlAll,
+                              ),
+                              alignment: Alignment.center,
+                              child: Icon(
+                                Icons.search_rounded,
+                                size: 30,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                            Text(
+                              _ctrl.text.trim().isEmpty
+                                  ? AppStrings.searchInChatHint
+                                  : AppStrings.searchNoResults,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     )
                   : ListView.separated(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.sm,
+                      ),
                       itemCount: _results.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, __) => Divider(
+                        height: 1,
+                        indent: AppSpacing.lg,
+                        endIndent: AppSpacing.lg,
+                        color: scheme.outlineVariant.withValues(alpha: 0.5),
+                      ),
                       itemBuilder: (BuildContext _, int i) {
                         final MessageEntity m = _results[i];
                         return ListTile(
-                          leading: const Icon(Icons.chat_bubble_outline),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.lg,
+                            vertical: AppSpacing.xs,
+                          ),
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: scheme.primaryContainer
+                                  .withValues(alpha: 0.6),
+                              borderRadius: AppRadius.mdAll,
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              Icons.chat_bubble_outline,
+                              size: 20,
+                              color: scheme.onPrimaryContainer,
+                            ),
+                          ),
                           title: Text(
                             previewMessageText(m),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyLarge,
                           ),
-                          subtitle: Text(
-                            DateFormatter.conversationTimestamp(m.createdAt),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: AppSpacing.xxs),
+                            child: Text(
+                              DateFormatter.conversationTimestamp(m.createdAt),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: AppRadius.mdAll,
                           ),
                           onTap: () => context.pop(m),
                         );

@@ -14,6 +14,7 @@ import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../domain/usecases/update_profile.dart';
 import '../providers/profile_providers.dart';
 
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/widgets/glass_widgets.dart';
 import '../../../../core/widgets/user_avatar.dart';
 
@@ -165,8 +166,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             return const Center(child: Text('Профиль не загружен'));
           }
           _hydrate(p);
+          final ThemeData theme = Theme.of(context);
           return ListView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.xl),
             children: <Widget>[
               // CARD 1: Profile Info & Avatar
               GlassmorphicCard(
@@ -183,15 +185,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 : '?',
                             avatarUrl: p.avatarUrl,
                           ),
-                          FloatingActionButton.small(
-                            heroTag: 'avatar-edit',
-                            onPressed: _saving ? null : _pickAvatar,
-                            child: const Icon(Icons.camera_alt_outlined),
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: AppShadows.glow(
+                                theme.colorScheme.primary,
+                                opacity: 0.45,
+                              ),
+                            ),
+                            child: FloatingActionButton.small(
+                              heroTag: 'avatar-edit',
+                              onPressed: _saving ? null : _pickAvatar,
+                              child: const Icon(Icons.camera_alt_outlined),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpacing.xxl),
                     TextField(
                       readOnly: true,
                       controller: TextEditingController(text: '@${p.username}'),
@@ -200,7 +211,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         prefixIcon: Icon(Icons.alternate_email),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     TextField(
                       controller: _displayName,
                       decoration: const InputDecoration(
@@ -208,7 +219,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         prefixIcon: Icon(Icons.badge_outlined),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     TextField(
                       controller: _bio,
                       minLines: 2,
@@ -221,7 +232,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         alignLabelWithHint: true,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     FilledButton.icon(
                       onPressed: _saving ? null : _save,
                       icon: _saving
@@ -236,7 +247,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
 
 
 
@@ -245,11 +256,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs,
+                        vertical: AppSpacing.sm,
+                      ),
                       child: Text(
                         AppStrings.settingsTheme,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        style: theme.textTheme.titleSmall,
                       ),
                     ),
                     const Divider(),
@@ -274,7 +288,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
 
               // CARD 4: Actions (Admin Panel, Logout)
               GlassmorphicCard(
@@ -289,7 +303,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           return const SizedBox.shrink();
                         }
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
                           child: FilledButton.tonalIcon(
                             icon: const Icon(Icons.shield_outlined),
                             label: const Text('Открыть админку'),
@@ -309,21 +323,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.xxl),
               Center(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: _onVersionTap,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
+                    ),
                     child: Text(
                       'cch3r1 messanger v0.1.0',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
                     ),
                   ),
                 ),
@@ -353,7 +366,7 @@ class _ThemeOptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       leading: Icon(icon, color: selected ? cs.primary : null),
       title: Text(title),
       trailing: selected

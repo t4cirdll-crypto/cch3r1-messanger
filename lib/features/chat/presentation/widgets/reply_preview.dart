@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../domain/entities/message_entity.dart';
 
 class ReplyPreview extends StatelessWidget {
@@ -21,17 +22,31 @@ class ReplyPreview extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest,
-        border: Border(top: BorderSide(color: cs.outlineVariant, width: 0.5)),
+        border: Border(
+          top: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.6),
+            width: 0.5,
+          ),
+        ),
       ),
-      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.xs,
+        AppSpacing.sm,
+      ),
       child: Row(
         children: <Widget>[
           Container(
             width: 3,
             height: 36,
-            color: cs.primary,
+            decoration: BoxDecoration(
+              gradient: AppGradients.fromScheme(cs),
+              borderRadius: const BorderRadius.all(Radius.circular(AppRadius.xs)),
+              boxShadow: AppShadows.glow(cs.primary, opacity: 0.28),
+            ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,9 +54,13 @@ class ReplyPreview extends StatelessWidget {
               children: <Widget>[
                 Text(
                   AppStrings.replyTo,
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: cs.primary, fontWeight: FontWeight.w600),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
                 ),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                   text,
                   maxLines: 1,
@@ -98,12 +117,17 @@ class QuotedMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+      margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.sm,
+        AppSpacing.xs,
+        AppSpacing.sm,
+        AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         border: Border(left: BorderSide(color: barColor, width: 3)),
         color: foreground.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppRadius.xsAll,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,8 +138,10 @@ class QuotedMessage extends StatelessWidget {
             style: theme.textTheme.labelSmall?.copyWith(
               color: barColor,
               fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
             ),
           ),
+          const SizedBox(height: AppSpacing.xxs),
           Text(
             previewMessageText(message),
             maxLines: 2,

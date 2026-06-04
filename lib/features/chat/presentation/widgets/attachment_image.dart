@@ -4,6 +4,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gal/gal.dart';
 
+import '../../../../core/theme/app_tokens.dart';
 import '../../domain/entities/message_entity.dart';
 import '../providers/chat_providers.dart';
 import '../services/attachment_url_cache.dart';
@@ -46,42 +47,81 @@ class AttachmentImage extends ConsumerWidget {
         ? message.attachmentWidth! / message.attachmentHeight!
         : 1.6;
 
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: () => _openFullscreen(context, url),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: 360),
         child: AspectRatio(
           aspectRatio: aspect.clamp(0.6, 2.4),
-          child: CachedNetworkImage(
-            imageUrl: url,
-            fit: BoxFit.cover,
-            placeholder: (BuildContext c, _) => _placeholder(c),
-            errorWidget: (BuildContext c, _, __) => _error(c),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: AppRadius.smAll,
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.4),
+              ),
+              boxShadow: AppShadows.sm(Theme.of(context).brightness),
+            ),
+            child: ClipRRect(
+              borderRadius: AppRadius.smAll,
+              child: CachedNetworkImage(
+                imageUrl: url,
+                fit: BoxFit.cover,
+                placeholder: (BuildContext c, _) => _placeholder(c),
+                errorWidget: (BuildContext c, _, __) => _error(c),
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _placeholder(BuildContext context) => Container(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        height: 200,
-        width: maxWidth,
-        alignment: Alignment.center,
-        child: const SizedBox(
-          width: 28,
-          height: 28,
-          child: CircularProgressIndicator(strokeWidth: 2),
+  Widget _placeholder(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    return Container(
+      height: 200,
+      width: maxWidth,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            scheme.surfaceContainerHighest,
+            scheme.surfaceContainerHigh,
+          ],
         ),
-      );
+      ),
+      child: SizedBox(
+        width: AppSpacing.xxl,
+        height: AppSpacing.xxl,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: scheme.primary.withValues(alpha: 0.6),
+        ),
+      ),
+    );
+  }
 
-  Widget _error(BuildContext context) => Container(
-        color: Theme.of(context).colorScheme.errorContainer,
-        height: 100,
-        width: maxWidth,
-        alignment: Alignment.center,
-        child: const Icon(Icons.broken_image_outlined, size: 32),
-      );
+  Widget _error(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    return Container(
+      height: 100,
+      width: maxWidth,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: scheme.errorContainer,
+        borderRadius: AppRadius.smAll,
+      ),
+      child: Icon(
+        Icons.broken_image_outlined,
+        size: AppSpacing.xxxl,
+        color: scheme.onErrorContainer,
+      ),
+    );
+  }
 
   void _openFullscreen(BuildContext context, String url) {
     Navigator.of(context).push(
@@ -143,24 +183,35 @@ class _FullscreenImageState extends State<_FullscreenImage> {
           IconButton(
             tooltip: 'Сохранить в галерею',
             onPressed: _saving ? null : _save,
-            icon: _saving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : const Icon(Icons.download_outlined, color: Colors.white),
+            icon: AnimatedSwitcher(
+              duration: AppDurations.fast,
+              switchInCurve: AppCurves.standard,
+              switchOutCurve: AppCurves.standard,
+              child: _saving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.download_outlined, color: Colors.white),
+            ),
           ),
         ],
       ),
       body: Center(
-        child: InteractiveViewer(
-          minScale: 0.5,
-          maxScale: 4,
-          child: CachedNetworkImage(imageUrl: widget.url),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4,
+            child: ClipRRect(
+              borderRadius: AppRadius.mdAll,
+              child: CachedNetworkImage(imageUrl: widget.url),
+            ),
+          ),
         ),
       ),
     );

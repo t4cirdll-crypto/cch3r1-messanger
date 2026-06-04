@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/date_format.dart';
 import '../../domain/entities/message_entity.dart';
 import 'attachment_audio_player.dart';
@@ -51,10 +52,10 @@ class MessageBubble extends StatelessWidget {
             ? scheme.onPrimary
             : scheme.onSurface;
     final BorderRadius radius = BorderRadius.only(
-      topLeft: const Radius.circular(20),
-      topRight: const Radius.circular(20),
-      bottomLeft: Radius.circular(isMine ? 20 : 6),
-      bottomRight: Radius.circular(isMine ? 6 : 20),
+      topLeft: const Radius.circular(AppRadius.lg),
+      topRight: const Radius.circular(AppRadius.lg),
+      bottomLeft: Radius.circular(isMine ? AppRadius.lg : AppSpacing.xs + AppSpacing.xxs),
+      bottomRight: Radius.circular(isMine ? AppSpacing.xs + AppSpacing.xxs : AppRadius.lg),
     );
 
     final double maxWidth = MediaQuery.of(context).size.width * 0.78;
@@ -71,7 +72,10 @@ class MessageBubble extends StatelessWidget {
             onLongPress: onLongPress,
             behavior: HitTestBehavior.opaque,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+              padding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.xs,
+                horizontal: AppSpacing.md,
+              ),
               child: Column(
                 crossAxisAlignment:
                     isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -82,17 +86,7 @@ class MessageBubble extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: bg,
                       borderRadius: radius,
-                      boxShadow: <BoxShadow>[
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: theme.brightness == Brightness.light
-                                ? 0.04
-                                : 0.12,
-                          ),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
+                      boxShadow: AppShadows.sm(theme.brightness),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,14 +94,14 @@ class MessageBubble extends StatelessWidget {
                       children: <Widget>[
                         if (message.isPinned)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
+                            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
                                 Icon(Icons.push_pin,
                                     size: 12,
                                     color: fg.withValues(alpha: 0.75)),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: AppSpacing.xs),
                                 Text(
                                   AppStrings.messagePinned,
                                   style: theme.textTheme.labelSmall?.copyWith(
@@ -119,14 +113,14 @@ class MessageBubble extends StatelessWidget {
                           ),
                         if (message.isForwarded)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
+                            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
                                 Icon(Icons.fast_forward,
                                     size: 14,
                                     color: fg.withValues(alpha: 0.75)),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: AppSpacing.xs),
                                 Text(
                                   AppStrings.messageForwarded,
                                   style: theme.textTheme.labelSmall?.copyWith(
@@ -158,11 +152,11 @@ class MessageBubble extends StatelessWidget {
                         else ...<Widget>[
                           if (message.hasAttachment)
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: AppRadius.smAll,
                               child: _attachmentWidget(maxWidth, fg),
                             ),
                           if (message.hasAttachment && message.hasText)
-                            const SizedBox(height: 6),
+                            const SizedBox(height: AppSpacing.sm),
                           if (message.hasText)
                             Padding(
                               padding: _textPadding(),
@@ -173,7 +167,7 @@ class MessageBubble extends StatelessWidget {
                               ),
                             ),
                         ],
-                        const SizedBox(height: 2),
+                        const SizedBox(height: AppSpacing.xxs),
                         Padding(
                           padding: _textPadding(),
                           child: Row(
@@ -189,7 +183,7 @@ class MessageBubble extends StatelessWidget {
                                     fontStyle: FontStyle.italic,
                                   ),
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: AppSpacing.sm),
                               ],
                               Text(
                                 DateFormatter.shortTime(message.createdAt),
@@ -198,7 +192,7 @@ class MessageBubble extends StatelessWidget {
                               ),
                               if (message.expiresAt != null &&
                                   !message.isDeleted) ...<Widget>[
-                                const SizedBox(width: 4),
+                                const SizedBox(width: AppSpacing.xs),
                                 _ExpiryBadge(
                                   expiresAt: message.expiresAt!,
                                   color: fg,
@@ -207,7 +201,7 @@ class MessageBubble extends StatelessWidget {
                               if (isMine &&
                                   showRead &&
                                   !message.isDeleted) ...<Widget>[
-                                const SizedBox(width: 4),
+                                const SizedBox(width: AppSpacing.xs),
                                 Icon(
                                   message.isRead ? Icons.done_all : Icons.check,
                                   size: 16,
@@ -225,10 +219,10 @@ class MessageBubble extends StatelessWidget {
                   ),
                   if (message.hasReactions)
                     Padding(
-                      padding: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.only(top: AppSpacing.xs),
                       child: Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.xs,
                         alignment:
                             isMine ? WrapAlignment.end : WrapAlignment.start,
                         children: message.reactions
@@ -259,29 +253,36 @@ class MessageBubble extends StatelessWidget {
 
   EdgeInsets _padding() {
     if (_isVisualMedia) {
-      return const EdgeInsets.all(4);
+      return const EdgeInsets.all(AppSpacing.xs);
     }
-    return const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    return const EdgeInsets.symmetric(
+      horizontal: AppSpacing.md,
+      vertical: AppSpacing.sm,
+    );
   }
 
   EdgeInsets _textPadding() {
     if (_isVisualMedia) {
-      return const EdgeInsets.symmetric(horizontal: 8, vertical: 2);
+      return const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xxs,
+      );
     }
     return EdgeInsets.zero;
   }
 
   Widget _attachmentWidget(double maxWidth, Color fg) {
+    const double mediaInset = AppSpacing.xs * 2;
     switch (message.attachmentKind!) {
       case AttachmentKind.image:
         return AttachmentImage(
           message: message,
-          maxWidth: maxWidth - 8,
+          maxWidth: maxWidth - mediaInset,
         );
       case AttachmentKind.video:
         return AttachmentVideo(
           message: message,
-          maxWidth: maxWidth - 8,
+          maxWidth: maxWidth - mediaInset,
         );
       case AttachmentKind.voice:
         return AttachmentAudioPlayer(
@@ -296,7 +297,7 @@ class MessageBubble extends StatelessWidget {
       case AttachmentKind.gif:
         return AttachmentGif(
           message: message,
-          maxWidth: maxWidth - 8,
+          maxWidth: maxWidth - mediaInset,
         );
     }
   }
@@ -331,12 +332,15 @@ class _ReactionChip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs - AppSpacing.xxs / 2,
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               Text(reaction.emoji, style: const TextStyle(fontSize: 14)),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpacing.xs),
               Text(
                 '${reaction.count}',
                 style: theme.textTheme.labelSmall?.copyWith(color: fg),
@@ -397,7 +401,7 @@ class _ExpiryBadgeState extends State<_ExpiryBadge> {
           size: 14,
           color: widget.color.withValues(alpha: 0.75),
         ),
-        const SizedBox(width: 2),
+        const SizedBox(width: AppSpacing.xxs),
         Text(
           _format(left),
           style: base?.copyWith(color: widget.color.withValues(alpha: 0.75)),
@@ -435,7 +439,7 @@ class _SwipeToReplyState extends State<_SwipeToReply>
 
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 220),
+    duration: AppDurations.normal,
   );
   double _drag = 0;
   bool _triggered = false;
@@ -479,7 +483,7 @@ class _SwipeToReplyState extends State<_SwipeToReply>
     final Animation<double> tween =
         Tween<double>(begin: from, end: 0).animate(CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutCubic,
+      curve: AppCurves.standard,
     ));
     void listener() {
       setState(() => _drag = tween.value);
@@ -518,7 +522,9 @@ class _SwipeToReplyState extends State<_SwipeToReply>
                     ? Alignment.centerRight
                     : Alignment.centerLeft,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                  ),
                   child: Opacity(
                     opacity: progress,
                     child: Transform.scale(
@@ -529,6 +535,10 @@ class _SwipeToReplyState extends State<_SwipeToReply>
                         decoration: BoxDecoration(
                           color: cs.primaryContainer,
                           shape: BoxShape.circle,
+                          boxShadow: AppShadows.glow(
+                            cs.primary,
+                            opacity: 0.35 * progress,
+                          ),
                         ),
                         alignment: Alignment.center,
                         child: Icon(

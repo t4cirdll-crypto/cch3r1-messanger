@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../theme/app_tokens.dart';
+
 /// Аватар пользователя с корректной обработкой загрузки и ошибок.
 ///
 /// Стандартный `CircleAvatar.backgroundImage` не отображает `child`
@@ -30,7 +32,6 @@ class UserAvatar extends StatelessWidget {
     final Color bg = backgroundColor ?? theme.colorScheme.primaryContainer;
     final Color fg = foregroundColor ?? theme.colorScheme.onPrimaryContainer;
     final double size = radius * 2;
-
     // Deterministic gradients for beautiful placeholder avatars
     final int code = initial.isNotEmpty ? initial.codeUnitAt(0) : 0;
     final List<Color> gradientColors;
@@ -61,20 +62,20 @@ class UserAvatar extends StatelessWidget {
           colors: gradientColors,
         ),
         shape: BoxShape.circle,
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.12),
+          width: 0.5,
+        ),
+        boxShadow: AppShadows.sm(theme.brightness),
       ),
       child: Text(
         initial,
-        style: TextStyle(
+        style: (theme.textTheme.titleMedium ?? const TextStyle()).copyWith(
           color: textColor,
           fontSize: radius * 0.8,
           fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+          height: 1,
         ),
       ),
     );
@@ -93,7 +94,8 @@ class UserAvatar extends StatelessWidget {
           fit: BoxFit.cover,
           placeholder: (BuildContext _, __) => fallback,
           errorWidget: (BuildContext _, __, ___) => fallback,
-          fadeInDuration: const Duration(milliseconds: 150),
+          fadeInDuration: AppDurations.fast,
+          fadeInCurve: AppCurves.standard,
         ),
       ),
     );

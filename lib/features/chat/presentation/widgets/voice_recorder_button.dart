@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
+import '../../../../core/theme/app_tokens.dart';
 import '../../domain/entities/message_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../services/attachment_picker.dart';
@@ -199,24 +200,37 @@ class _VoiceRecorderButtonState extends State<VoiceRecorderButton> {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final Color background = _recording && _cancelling
+        ? scheme.error
+        : scheme.primary;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onLongPressStart: (_) => _start(),
       onLongPressMoveUpdate: _onLongPressMove,
       onLongPressEnd: (_) => _finish(cancel: _cancelling),
       onLongPressCancel: () => _finish(cancel: true),
-      child: Container(
-        margin: const EdgeInsets.only(left: 4),
-        decoration: BoxDecoration(
-          color: _recording
-              ? (_cancelling ? Colors.red : Theme.of(context).colorScheme.primary)
-              : Theme.of(context).colorScheme.primary,
-          shape: BoxShape.circle,
-        ),
-        padding: const EdgeInsets.all(10),
-        child: Icon(
-          _recording ? Icons.mic : Icons.mic_none,
-          color: Theme.of(context).colorScheme.onPrimary,
+      child: AnimatedScale(
+        scale: _recording ? 1.12 : 1,
+        duration: AppDurations.fast,
+        curve: AppCurves.spring,
+        child: AnimatedContainer(
+          duration: AppDurations.instant,
+          curve: AppCurves.standard,
+          margin: const EdgeInsets.only(left: AppSpacing.xs),
+          decoration: BoxDecoration(
+            color: background,
+            shape: BoxShape.circle,
+            boxShadow: AppShadows.glow(
+              background,
+              opacity: _recording ? 0.5 : 0.35,
+            ),
+          ),
+          padding: const EdgeInsets.all(AppSpacing.sm + AppSpacing.xxs),
+          child: Icon(
+            _recording ? Icons.mic : Icons.mic_none,
+            color: scheme.onPrimary,
+          ),
         ),
       ),
     );
@@ -232,24 +246,48 @@ class VoiceRecorderOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!state.isRecording) return const SizedBox.shrink();
     final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
     final String time = _formatDuration(state.elapsed);
-    return Container(
-      color: theme.colorScheme.surfaceContainerHighest,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    return AnimatedContainer(
+      duration: AppDurations.fast,
+      curve: AppCurves.standard,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        border: Border(
+          top: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md - AppSpacing.xxs,
+      ),
       child: Row(
         children: <Widget>[
           _RedDot(),
-          const SizedBox(width: 10),
-          Text(time, style: theme.textTheme.bodyMedium),
-          const Spacer(),
+          const SizedBox(width: AppSpacing.md - AppSpacing.xxs),
           Text(
-            state.isCancelling
-                ? 'Отпустите, чтобы отменить'
-                : '← Смахните для отмены',
-            style: theme.textTheme.bodySmall?.copyWith(
+            time,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            ),
+          ),
+          const Spacer(),
+          AnimatedDefaultTextStyle(
+            duration: AppDurations.fast,
+            curve: AppCurves.standard,
+            style: theme.textTheme.bodySmall!.copyWith(
               color: state.isCancelling
-                  ? Colors.red
-                  : theme.colorScheme.onSurfaceVariant,
+                  ? scheme.error
+                  : scheme.onSurfaceVariant,
+              fontWeight:
+                  state.isCancelling ? FontWeight.w600 : FontWeight.w400,
+            ),
+            child: Text(
+              state.isCancelling
+                  ? 'Отпустите, чтобы отменить'
+                  : '← Смахните для отмены',
             ),
           ),
         ],
@@ -293,15 +331,18 @@ class _RedDotState extends State<_RedDot>
 
   @override
   Widget build(BuildContext context) {
+    final Color dotColor = Theme.of(context).colorScheme.error;
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 200),
+      duration: AppDurations.normal,
+      curve: AppCurves.standard,
       opacity: _on ? 1 : 0.3,
       child: Container(
-        width: 12,
-        height: 12,
-        decoration: const BoxDecoration(
-          color: Colors.red,
+        width: AppSpacing.md,
+        height: AppSpacing.md,
+        decoration: BoxDecoration(
+          color: dotColor,
           shape: BoxShape.circle,
+          boxShadow: AppShadows.glow(dotColor, opacity: 0.45),
         ),
       ),
     );

@@ -6,6 +6,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../core/theme/app_tokens.dart';
 import '../../domain/entities/message_entity.dart';
 import '../providers/chat_providers.dart';
 import '../services/attachment_url_cache.dart';
@@ -67,14 +68,20 @@ class _AttachmentFileCardState extends ConsumerState<AttachmentFileCard> {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final TextTheme textTheme = theme.textTheme;
     final String name =
         widget.message.attachmentName ?? 'Файл';
     final String? sizeLabel =
         _formatSize(widget.message.attachmentSize);
     return InkWell(
       onTap: _open,
+      borderRadius: AppRadius.mdAll,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.sm,
+        ),
         constraints: const BoxConstraints(minWidth: 220, maxWidth: 320),
         child: Row(
           children: <Widget>[
@@ -82,8 +89,11 @@ class _AttachmentFileCardState extends ConsumerState<AttachmentFileCard> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: widget.foreground.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
+                color: widget.foreground.withValues(alpha: 0.14),
+                borderRadius: AppRadius.smAll,
+                border: Border.all(
+                  color: widget.foreground.withValues(alpha: 0.10),
+                ),
               ),
               alignment: Alignment.center,
               child: Icon(
@@ -91,7 +101,7 @@ class _AttachmentFileCardState extends ConsumerState<AttachmentFileCard> {
                 color: widget.foreground,
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,34 +111,46 @@ class _AttachmentFileCardState extends ConsumerState<AttachmentFileCard> {
                     name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+                    style: textTheme.titleSmall?.copyWith(
                       color: widget.foreground,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (sizeLabel != null || _error != null)
+                  if (sizeLabel != null || _error != null) ...<Widget>[
+                    const SizedBox(height: AppSpacing.xxs),
                     Text(
                       _error ?? sizeLabel!,
-                      style: TextStyle(
+                      style: textTheme.bodySmall?.copyWith(
                         color: widget.foreground.withValues(alpha: 0.8),
-                        fontSize: 12,
                       ),
                     ),
+                  ],
                 ],
               ),
             ),
-            const SizedBox(width: 4),
-            _busy
-                ? SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
+            const SizedBox(width: AppSpacing.xs),
+            AnimatedSwitcher(
+              duration: AppDurations.fast,
+              switchInCurve: AppCurves.standard,
+              switchOutCurve: AppCurves.standard,
+              transitionBuilder: (Widget child, Animation<double> animation) =>
+                  ScaleTransition(scale: animation, child: child),
+              child: _busy
+                  ? SizedBox(
+                      key: const ValueKey<String>('busy'),
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: widget.foreground,
+                      ),
+                    )
+                  : Icon(
+                      Icons.file_download_outlined,
+                      key: const ValueKey<String>('idle'),
                       color: widget.foreground,
                     ),
-                  )
-                : Icon(Icons.file_download_outlined,
-                    color: widget.foreground),
+            ),
           ],
         ),
       ),

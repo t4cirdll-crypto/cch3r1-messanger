@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_tokens.dart';
 import '../providers/admin_providers.dart';
 
 /// Скрытый экран: показывает Android device id, чтобы KillDev мог переслать
@@ -12,37 +13,47 @@ class DeviceIdScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
     final AsyncValue<String> id = ref.watch(deviceIdProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Device ID')),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: id.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (Object err, StackTrace _) => Center(child: Text('$err')),
           data: (String value) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              const Text(
+              Text(
                 'ID этого устройства. Перешли его админу — он добавит '
                 'устройство в список админских и активирует панель.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(8),
+                  color: scheme.surfaceContainerHigh,
+                  borderRadius: AppRadius.mdAll,
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.4),
+                  ),
+                  boxShadow: AppShadows.sm(theme.brightness),
                 ),
                 child: SelectableText(
                   value,
-                  style: const TextStyle(
+                  style: theme.textTheme.titleMedium?.copyWith(
                     fontFamily: 'monospace',
-                    fontSize: 16,
+                    letterSpacing: 0.2,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               FilledButton.icon(
                 icon: const Icon(Icons.copy),
                 label: const Text('Скопировать'),
