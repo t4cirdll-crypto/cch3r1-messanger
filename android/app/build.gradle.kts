@@ -24,7 +24,10 @@ val keystoreProperties = Properties().apply {
 android {
     namespace = "com.cchr.cch3r1_messanger"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Явная версия NDK — flutter_local_notifications / just_audio / record /
+    // gal / image_picker / video_player / permission_handler / sqflite требуют
+    // 27.0.12077973. Иначе Gradle warning'ит и перерасходует время на re-resolve.
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
