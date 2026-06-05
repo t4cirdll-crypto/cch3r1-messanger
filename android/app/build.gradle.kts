@@ -42,9 +42,11 @@ android {
 
     defaultConfig {
         applicationId = "com.cchr.cch3r1_messanger"
-        // record_android и ряд других плагинов требуют minSdk 23+.
-        // flutter.minSdkVersion тянет 21, поэтому фиксируем явно.
-        minSdk = flutter.minSdkVersion
+        // record_android 5.2.1 и ряд других плагинов требуют minSdk 23+.
+        // flutter.minSdkVersion в 3.29.x тянет 21 — поэтому фиксируем явно,
+        // иначе манифест-merge падает с "minSdkVersion 21 cannot be smaller
+        // than version 23 declared in library [:record_android]".
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
