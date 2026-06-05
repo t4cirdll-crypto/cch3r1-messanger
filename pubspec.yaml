@@ -36,10 +36,10 @@ dependencies:
 
   # Utils
   connectivity_plus: ^6.0.3
-  # dynamic_color 1.8.0+ вызывает Color.toARGB32() — метод отсутствует в
-  # Flutter 3.27.x (появился позже), iOS-билд ломается на этапе Xcode.
-  # Фиксируем верхнюю границу, пока upstream не починит.
-  dynamic_color: ">=1.7.0 <1.8.0"
+  # dynamic_color 1.8.x требует Flutter 3.27+ (Color.toARGB32).
+  # 1.7.0 был запинен из-за старого Flutter, теперь используем актуальную
+  # версию, иначе Kotlin-плагин ломает Java-GeneratedPluginRegistrant.
+  dynamic_color: ^1.8.1
   image_picker: ^1.1.2
   intl: ^0.19.0
   shimmer: ^3.0.0

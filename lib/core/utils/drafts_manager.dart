@@ -1,10 +1,12 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'prefs_init.dart';
+
 class DraftsManager {
   static SharedPreferences? _prefs;
 
   static Future<void> init() async {
-    _prefs ??= await SharedPreferences.getInstance();
+    _prefs ??= await getSharedPreferencesSafely();
   }
 
   static String? getDraft(String conversationId) {

@@ -1,10 +1,12 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'prefs_init.dart';
+
 class ProxySettings {
   static SharedPreferences? _prefs;
 
   static Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
+    _prefs = await getSharedPreferencesSafely();
   }
 
   static bool get isEnabled => _prefs?.getBool('proxy.enabled') ?? false;

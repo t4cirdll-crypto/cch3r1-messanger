@@ -203,12 +203,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xxl),
-                    TextField(
-                      readOnly: true,
-                      controller: TextEditingController(text: '@${p.username}'),
+                    // Username неизменяемый (зашит в auth/профиле),
+                    // поэтому честно рисуем его как «метку», а не как
+                    // редактируемое поле — иначе пользователь тапает,
+                    // ждёт клавиатуру, а её нет.
+                    InputDecorator(
                       decoration: const InputDecoration(
                         labelText: AppStrings.usernameLabel,
                         prefixIcon: Icon(Icons.alternate_email),
+                        // Гасим визуальные признаки редактируемого поля.
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                      ),
+                      child: Text(
+                        '@${p.username}',
+                        style: Theme.of(context).textTheme.bodyLarge,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
