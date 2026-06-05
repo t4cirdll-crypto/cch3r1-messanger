@@ -38,7 +38,9 @@ jobs:
         with:
           channel: stable
           cache: true
-          flutter-version: "3.27.1"
+          # 3.29.x — минимальный стабильный, в котором есть Color.toARGB32
+          # (нужен dynamic_color 1.8.x). 3.27.1 этот метод ещё не содержит.
+          flutter-version: "3.29.3"
 
       - name: Flutter version
         run: flutter --version
