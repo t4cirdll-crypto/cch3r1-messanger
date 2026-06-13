@@ -7,6 +7,7 @@ import '../../../../core/errors/exceptions.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/username_mapper.dart';
 import '../../../../core/utils/validators.dart';
+import '../../../../core/widgets/glass_widgets.dart';
 import '../providers/auth_providers.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -93,158 +94,147 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             padding: const EdgeInsets.all(AppSpacing.xxl),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: AppRadius.xxlAll,
-                  boxShadow: AppShadows.md(theme.brightness),
-                ),
-                child: Card(
-                  elevation: 0,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AppRadius.xxlAll,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.xxl),
-                    child: Form(
-                      key: _formKey,
-                      autovalidateMode: AutovalidateMode.onUserInteraction,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          Center(
-                            child: Container(
-                              width: 72,
-                              height: 72,
-                              decoration: BoxDecoration(
-                                gradient: AppGradients.fromScheme(scheme),
-                                borderRadius: AppRadius.lgAll,
-                                boxShadow: AppShadows.glow(scheme.primary),
-                              ),
-                              child: const Icon(
-                                Icons.person_add_rounded,
-                                size: 36,
-                                color: Colors.white,
-                              ),
-                            ),
+              child: GlassmorphicCard(
+                blur: 24,
+                borderRadius: AppRadius.xxl,
+                padding: const EdgeInsets.all(AppSpacing.xxl),
+                child: Form(
+                  key: _formKey,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Center(
+                        child: Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            gradient: AppGradients.fromScheme(scheme),
+                            borderRadius: AppRadius.lgAll,
+                            boxShadow: AppShadows.glow(scheme.primary),
                           ),
-                          const SizedBox(height: AppSpacing.lg),
-                          Text(
-                            AppStrings.signUpTitle,
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.5,
-                            ),
+                          child: const Icon(
+                            Icons.person_add_rounded,
+                            size: 36,
+                            color: Colors.white,
                           ),
-                          const SizedBox(height: AppSpacing.xxl + AppSpacing.xs),
-                          TextFormField(
-                            controller: _username,
-                            decoration: InputDecoration(
-                              labelText: AppStrings.usernameLabel,
-                              hintText: AppStrings.usernameHint,
-                              prefixIcon: const Icon(Icons.alternate_email),
-                              suffixIcon: AnimatedSwitcher(
-                                duration: AppDurations.fast,
-                                switchInCurve: AppCurves.spring,
-                                transitionBuilder:
-                                    (Widget child, Animation<double> anim) =>
-                                        ScaleTransition(
-                                  scale: anim,
-                                  child: child,
-                                ),
-                                child: _usernameAvailable == null
-                                    ? const SizedBox.shrink()
-                                    : Icon(
-                                        _usernameAvailable!
-                                            ? Icons.check_circle
-                                            : Icons.cancel,
-                                        key: ValueKey<bool>(_usernameAvailable!),
-                                        color: _usernameAvailable!
-                                            ? Colors.green
-                                            : theme.colorScheme.error,
-                                      ),
-                              ),
-                            ),
-                            textInputAction: TextInputAction.next,
-                            validator: Validators.username,
-                            onChanged: (_) {
-                              if (_usernameAvailable != null) {
-                                setState(() => _usernameAvailable = null);
-                              }
-                            },
-                          ),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              onPressed: _checking ? null : _checkUsername,
-                              icon: _checking
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Icon(Icons.search),
-                              label: const Text(AppStrings.usernameCheck),
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          TextFormField(
-                            controller: _password,
-                            obscureText: _obscure,
-                            decoration: InputDecoration(
-                              labelText: AppStrings.passwordLabel,
-                              prefixIcon: const Icon(Icons.lock_outline),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscure
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                ),
-                                onPressed: () =>
-                                    setState(() => _obscure = !_obscure),
-                              ),
-                            ),
-                            textInputAction: TextInputAction.next,
-                            validator: Validators.password,
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          TextFormField(
-                            controller: _password2,
-                            obscureText: _obscure,
-                            decoration: const InputDecoration(
-                              labelText: AppStrings.passwordRepeatLabel,
-                              prefixIcon: Icon(Icons.lock_outline),
-                            ),
-                            textInputAction: TextInputAction.done,
-                            validator:
-                                Validators.passwordMatch(() => _password.text),
-                            onFieldSubmitted: (_) => _submit(),
-                          ),
-                          const SizedBox(height: AppSpacing.xxl),
-                          FilledButton(
-                            onPressed: _busy ? null : _submit,
-                            child: _busy
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.4,
-                                    ),
-                                  )
-                                : const Text(AppStrings.signUpButton),
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          TextButton(
-                            onPressed:
-                                _busy ? null : () => context.go('/login'),
-                            child: const Text(AppStrings.goToSignIn),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        AppStrings.signUpTitle,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xxl + AppSpacing.xs),
+                      TextFormField(
+                        controller: _username,
+                        decoration: InputDecoration(
+                          labelText: AppStrings.usernameLabel,
+                          hintText: AppStrings.usernameHint,
+                          prefixIcon: const Icon(Icons.alternate_email),
+                          suffixIcon: AnimatedSwitcher(
+                            duration: AppDurations.fast,
+                            switchInCurve: AppCurves.spring,
+                            transitionBuilder:
+                                (Widget child, Animation<double> anim) =>
+                                    ScaleTransition(
+                              scale: anim,
+                              child: child,
+                            ),
+                            child: _usernameAvailable == null
+                                ? const SizedBox.shrink()
+                                : Icon(
+                                    _usernameAvailable!
+                                        ? Icons.check_circle
+                                        : Icons.cancel,
+                                    key: ValueKey<bool>(_usernameAvailable!),
+                                    color: _usernameAvailable!
+                                        ? Colors.green
+                                        : theme.colorScheme.error,
+                                  ),
+                          ),
+                        ),
+                        textInputAction: TextInputAction.next,
+                        validator: Validators.username,
+                        onChanged: (_) {
+                          if (_usernameAvailable != null) {
+                            setState(() => _usernameAvailable = null);
+                          }
+                        },
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: _checking ? null : _checkUsername,
+                          icon: _checking
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.search),
+                          label: const Text(AppStrings.usernameCheck),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      TextFormField(
+                        controller: _password,
+                        obscureText: _obscure,
+                        decoration: InputDecoration(
+                          labelText: AppStrings.passwordLabel,
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscure
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
+                          ),
+                        ),
+                        textInputAction: TextInputAction.next,
+                        validator: Validators.password,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      TextFormField(
+                        controller: _password2,
+                        obscureText: _obscure,
+                        decoration: const InputDecoration(
+                          labelText: AppStrings.passwordRepeatLabel,
+                          prefixIcon: Icon(Icons.lock_outline),
+                        ),
+                        textInputAction: TextInputAction.done,
+                        validator:
+                            Validators.passwordMatch(() => _password.text),
+                        onFieldSubmitted: (_) => _submit(),
+                      ),
+                      const SizedBox(height: AppSpacing.xxl),
+                      FilledButton(
+                        onPressed: _busy ? null : _submit,
+                        child: _busy
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                ),
+                              )
+                            : const Text(AppStrings.signUpButton),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      TextButton(
+                        onPressed: _busy ? null : () => context.go('/login'),
+                        child: const Text(AppStrings.goToSignIn),
+                      ),
+                    ],
                   ),
                 ),
               ),

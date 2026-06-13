@@ -28,7 +28,6 @@ Future<void> main() async {
     WidgetsFlutterBinding.ensureInitialized();
     await ProxySettings.init();
     await DraftsManager.init();
-    await initializeDateFormatting('ru');
 
     await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
       DeviceOrientation.portraitUp,

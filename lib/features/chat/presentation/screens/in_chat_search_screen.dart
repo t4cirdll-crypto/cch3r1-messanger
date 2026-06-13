@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/utils/date_format.dart';
+import '../../../../core/widgets/glass_widgets.dart';
 import '../../domain/entities/message_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../providers/chat_providers.dart';
@@ -77,7 +78,7 @@ class _InChatSearchScreenState extends ConsumerState<InChatSearchScreen> {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
     return Scaffold(
-      appBar: AppBar(
+      appBar: GlassmorphicAppBar(
         title: TextField(
           controller: _ctrl,
           autofocus: true,

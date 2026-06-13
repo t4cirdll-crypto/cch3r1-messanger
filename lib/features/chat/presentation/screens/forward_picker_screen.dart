@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_tokens.dart';
+import '../../../../core/widgets/glass_widgets.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../chat_list/domain/entities/conversation_entity.dart';
 import '../../../chat_list/presentation/providers/chat_list_providers.dart';
@@ -20,7 +21,7 @@ class ForwardPickerScreen extends ConsumerWidget {
         ref.watch(chatListControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: GlassmorphicAppBar(
         title: const Text(AppStrings.forwardTitle),
         leading: IconButton(
           icon: const Icon(Icons.close),
@@ -146,7 +147,9 @@ class ForwardPickerScreen extends ConsumerWidget {
             ? Text(
                 (peer?.effectiveName ?? '?').isEmpty
                     ? '?'
-                    : (peer?.effectiveName ?? '?').substring(0, 1).toUpperCase(),
+                    : (peer?.effectiveName ?? '?')
+                        .substring(0, 1)
+                        .toUpperCase(),
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: scheme.onSecondaryContainer,
                   fontWeight: FontWeight.w600,

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -575,28 +577,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               message: _replyTo!,
               onCancel: () => setState(() => _replyTo = null),
             ),
-          Container(
-            decoration: BoxDecoration(
-              color: cs.surface,
-              border: Border(
-                top: BorderSide(
-                  color: cs.outlineVariant.withValues(alpha: 0.4),
-                ),
-              ),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: Colors.black.withValues(
-                    alpha: Theme.of(context).brightness == Brightness.light
-                        ? 0.03
-                        : 0.15,
-                  ),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.xs, vertical: AppSpacing.xs),
+          _GlassComposerBar(
             child: SafeArea(
               top: false,
               child: Padding(
@@ -631,10 +612,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             horizontal: AppSpacing.lg,
                             vertical: AppSpacing.sm + AppSpacing.xxs,
                           ),
-                          fillColor:
-                              Theme.of(context).brightness == Brightness.light
-                                  ? Colors.grey.shade100
-                                  : cs.surfaceContainerHigh,
+                          fillColor: cs.surfaceContainerHighest.withValues(
+                            alpha:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? 0.7
+                                    : 0.5,
+                          ),
                         ),
                       ),
                     ),
@@ -649,8 +632,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           child: Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              boxShadow: AppShadows.glow(cs.primary,
-                                  opacity: 0.35),
+                              boxShadow:
+                                  AppShadows.glow(cs.primary, opacity: 0.35),
                             ),
                             child: CircleAvatar(
                               radius: 22,
@@ -1245,6 +1228,54 @@ class _ScrollToBottomFab extends StatelessWidget {
               color: cs.onSurface,
               size: 24,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Стеклянная панель композера: размытие фона + полупрозрачная заливка,
+/// световой блик сверху и тонкая «hairline» граница. Сообщения мягко
+/// просвечивают под строкой ввода.
+class _GlassComposerBar extends StatelessWidget {
+  const _GlassComposerBar({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    final bool dark = Theme.of(context).brightness == Brightness.dark;
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[
+                Color.alphaBlend(
+                  Colors.white.withValues(alpha: dark ? 0.06 : 0.28),
+                  cs.surface.withValues(alpha: dark ? 0.78 : 0.82),
+                ),
+                cs.surface.withValues(alpha: dark ? 0.78 : 0.84),
+              ],
+            ),
+            border: Border(
+              top: BorderSide(
+                color: cs.outlineVariant.withValues(alpha: 0.5),
+                width: 0.6,
+              ),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xs,
+              vertical: AppSpacing.xs,
+            ),
+            child: child,
           ),
         ),
       ),
