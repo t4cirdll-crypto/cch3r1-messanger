@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_tokens.dart';
+import '../../../../core/widgets/glass_widgets.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../search_user/presentation/providers/search_providers.dart';
 import '../../domain/entities/conversation_entity.dart';
@@ -104,7 +105,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
         ref.watch(searchResultsProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: GlassmorphicAppBar(
         title: const Text('Новая группа'),
         actions: <Widget>[
           IconButton(

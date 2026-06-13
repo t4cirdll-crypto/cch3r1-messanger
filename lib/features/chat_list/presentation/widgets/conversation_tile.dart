@@ -252,7 +252,7 @@ class _Avatar extends StatelessWidget {
                 color: Colors.green,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: theme.scaffoldBackgroundColor,
+                  color: theme.colorScheme.surface,
                   width: 2,
                 ),
               ),

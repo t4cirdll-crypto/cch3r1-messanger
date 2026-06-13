@@ -11,6 +11,7 @@ import '../../../chat_list/domain/entities/conversation_entity.dart';
 import '../../../chat_list/presentation/providers/chat_list_providers.dart';
 import '../providers/search_providers.dart';
 
+import '../../../../core/widgets/glass_widgets.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../profile/presentation/widgets/user_profile_sheet.dart';
 
@@ -60,7 +61,7 @@ class _SearchUserScreenState extends ConsumerState<SearchUserScreen> {
         ref.watch(searchResultsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.searchTitle)),
+      appBar: const GlassmorphicAppBar(title: Text(AppStrings.searchTitle)),
       body: Column(
         children: <Widget>[
           Padding(
@@ -143,9 +144,8 @@ class _SearchUserScreenState extends ConsumerState<SearchUserScreen> {
                                         p.rank!.toUpperCase() == 'БОТ';
                                 final ColorScheme scheme =
                                     Theme.of(context).colorScheme;
-                                final Color accent = isBot
-                                    ? Colors.purple
-                                    : scheme.primary;
+                                final Color accent =
+                                    isBot ? Colors.purple : scheme.primary;
                                 return TweenAnimationBuilder<double>(
                                   duration: AppDurations.fast,
                                   curve: AppCurves.spring,
@@ -172,12 +172,11 @@ class _SearchUserScreenState extends ConsumerState<SearchUserScreen> {
                                           : scheme.primaryContainer,
                                       borderRadius: AppRadius.xsAll,
                                       border: Border.all(
-                                        color:
-                                            accent.withValues(alpha: 0.4),
+                                        color: accent.withValues(alpha: 0.4),
                                         width: 1,
                                       ),
-                                      boxShadow:
-                                          AppShadows.glow(accent, opacity: 0.18),
+                                      boxShadow: AppShadows.glow(accent,
+                                          opacity: 0.18),
                                     ),
                                     child: Text(
                                       p.rank!.toUpperCase(),
@@ -185,11 +184,11 @@ class _SearchUserScreenState extends ConsumerState<SearchUserScreen> {
                                           .textTheme
                                           .labelSmall
                                           ?.copyWith(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.5,
-                                        color: accent,
-                                      ),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.5,
+                                            color: accent,
+                                          ),
                                     ),
                                   ),
                                 );

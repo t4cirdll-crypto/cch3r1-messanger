@@ -41,11 +41,31 @@ class MessageBubble extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
 
-    final Color bg = highlight
-        ? scheme.tertiaryContainer
-        : isMine
-            ? scheme.primary
-            : scheme.surfaceContainerHigh;
+    final bool dark = theme.brightness == Brightness.dark;
+    // Liquid Glass: исходящие — глянцевый градиент (primary→secondary) со
+    // световой кромкой; входящие — морозное полупрозрачное стекло, сквозь
+    // которое мягко просвечивает фон чата.
+    final Gradient? bubbleGradient = isMine && !highlight
+        ? LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[scheme.primary, scheme.secondary],
+          )
+        : null;
+    final Color? bubbleColor = bubbleGradient != null
+        ? null
+        : highlight
+            ? scheme.tertiaryContainer.withValues(alpha: dark ? 0.9 : 0.95)
+            : scheme.surfaceContainerHigh.withValues(alpha: dark ? 0.55 : 0.72);
+    final Border bubbleBorder = Border.all(
+      color: isMine && !highlight
+          ? Colors.white.withValues(alpha: dark ? 0.18 : 0.3)
+          : Colors.white.withValues(alpha: dark ? 0.1 : 0.55),
+      width: 0.8,
+    );
+    final List<BoxShadow> bubbleShadow = isMine && !highlight
+        ? AppShadows.glow(scheme.primary, opacity: dark ? 0.28 : 0.22)
+        : AppShadows.sm(theme.brightness);
     final Color fg = highlight
         ? scheme.onTertiaryContainer
         : isMine
@@ -54,8 +74,10 @@ class MessageBubble extends StatelessWidget {
     final BorderRadius radius = BorderRadius.only(
       topLeft: const Radius.circular(AppRadius.lg),
       topRight: const Radius.circular(AppRadius.lg),
-      bottomLeft: Radius.circular(isMine ? AppRadius.lg : AppSpacing.xs + AppSpacing.xxs),
-      bottomRight: Radius.circular(isMine ? AppSpacing.xs + AppSpacing.xxs : AppRadius.lg),
+      bottomLeft: Radius.circular(
+          isMine ? AppRadius.lg : AppSpacing.xs + AppSpacing.xxs),
+      bottomRight: Radius.circular(
+          isMine ? AppSpacing.xs + AppSpacing.xxs : AppRadius.lg),
     );
 
     final double maxWidth = MediaQuery.of(context).size.width * 0.78;
@@ -84,9 +106,11 @@ class MessageBubble extends StatelessWidget {
                   Container(
                     padding: _padding(),
                     decoration: BoxDecoration(
-                      color: bg,
+                      color: bubbleColor,
+                      gradient: bubbleGradient,
                       borderRadius: radius,
-                      boxShadow: AppShadows.sm(theme.brightness),
+                      border: bubbleBorder,
+                      boxShadow: bubbleShadow,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,7 +118,8 @@ class MessageBubble extends StatelessWidget {
                       children: <Widget>[
                         if (message.isPinned)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                            padding:
+                                const EdgeInsets.only(bottom: AppSpacing.xs),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
@@ -113,7 +138,8 @@ class MessageBubble extends StatelessWidget {
                           ),
                         if (message.isForwarded)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                            padding:
+                                const EdgeInsets.only(bottom: AppSpacing.xs),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
