@@ -41,31 +41,14 @@ class MessageBubble extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
 
-    final bool dark = theme.brightness == Brightness.dark;
-    // Liquid Glass: исходящие — глянцевый градиент (primary→secondary) со
-    // световой кромкой; входящие — морозное полупрозрачное стекло, сквозь
-    // которое мягко просвечивает фон чата.
-    final Gradient? bubbleGradient = isMine && !highlight
-        ? LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[scheme.primary, scheme.secondary],
-          )
-        : null;
-    final Color? bubbleColor = bubbleGradient != null
-        ? null
-        : highlight
-            ? scheme.tertiaryContainer.withValues(alpha: dark ? 0.9 : 0.95)
-            : scheme.surfaceContainerHigh.withValues(alpha: dark ? 0.55 : 0.72);
-    final Border bubbleBorder = Border.all(
-      color: isMine && !highlight
-          ? Colors.white.withValues(alpha: dark ? 0.18 : 0.3)
-          : Colors.white.withValues(alpha: dark ? 0.1 : 0.55),
-      width: 0.8,
-    );
-    final List<BoxShadow> bubbleShadow = isMine && !highlight
-        ? AppShadows.glow(scheme.primary, opacity: dark ? 0.28 : 0.22)
-        : AppShadows.sm(theme.brightness);
+    // Material You: исходящие — сплошной `primary`, входящие — тональный
+    // `surfaceContainerHigh`, подсвеченные — `tertiaryContainer`. Плоско,
+    // без градиентов, кромок и теней.
+    final Color bubbleColor = highlight
+        ? scheme.tertiaryContainer
+        : isMine
+            ? scheme.primary
+            : scheme.surfaceContainerHigh;
     final Color fg = highlight
         ? scheme.onTertiaryContainer
         : isMine
@@ -107,10 +90,7 @@ class MessageBubble extends StatelessWidget {
                     padding: _padding(),
                     decoration: BoxDecoration(
                       color: bubbleColor,
-                      gradient: bubbleGradient,
                       borderRadius: radius,
-                      border: bubbleBorder,
-                      boxShadow: bubbleShadow,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

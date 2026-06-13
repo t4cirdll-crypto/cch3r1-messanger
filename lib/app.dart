@@ -6,7 +6,6 @@ import 'config/routes.dart';
 import 'config/theme.dart';
 import 'core/constants/app_strings.dart';
 import 'core/providers/app_settings_providers.dart';
-import 'core/widgets/glass_widgets.dart';
 import 'core/widgets/presence_tracker.dart';
 
 class CchrMessangerApp extends ConsumerWidget {
@@ -28,13 +27,6 @@ class CchrMessangerApp extends ConsumerWidget {
             theme: AppTheme.light(light),
             darkTheme: AppTheme.dark(dark),
             routerConfig: router,
-            // Единая «жидкое стекло» подложка под всеми маршрутами: экраны
-            // прозрачны и плывут поверх неё, поэтому стеклянные поверхности
-            // (аппбары, карточки, пузыри) красиво просвечивают.
-            builder: (BuildContext context, Widget? child) =>
-                LiquidGlassBackground(
-              child: child ?? const SizedBox.shrink(),
-            ),
           ),
         );
       },

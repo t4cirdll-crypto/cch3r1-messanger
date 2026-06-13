@@ -52,7 +52,8 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                   borderRadius: AppRadius.mdAll,
                 ),
               ),
-              onChanged: (String v) => setState(() => _query = v.trim().toLowerCase()),
+              onChanged: (String v) =>
+                  setState(() => _query = v.trim().toLowerCase()),
             ),
           ),
           Expanded(
@@ -65,7 +66,9 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                     : list
                         .where((AdminUser u) =>
                             u.username.toLowerCase().contains(_query) ||
-                            (u.displayName ?? '').toLowerCase().contains(_query))
+                            (u.displayName ?? '')
+                                .toLowerCase()
+                                .contains(_query))
                         .toList();
                 if (filtered.isEmpty) {
                   return const Center(child: Text('Никого не найдено'));
@@ -102,15 +105,15 @@ class _UserTile extends ConsumerWidget {
       leading: Container(
         width: 40,
         height: 40,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: AppGradients.brand,
+          color: Theme.of(context).colorScheme.primaryContainer,
         ),
         alignment: Alignment.center,
         child: Text(
           (user.displayName ?? user.username).substring(0, 1).toUpperCase(),
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
                 fontWeight: FontWeight.w600,
               ),
         ),
@@ -125,7 +128,8 @@ class _UserTile extends ConsumerWidget {
                   child: Text('@${user.username}',
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        decoration: user.isBanned ? TextDecoration.lineThrough : null,
+                        decoration:
+                            user.isBanned ? TextDecoration.lineThrough : null,
                       )),
                 ),
                 if (user.rank != null && user.rank!.isNotEmpty) ...[
@@ -166,10 +170,7 @@ class _UserTile extends ConsumerWidget {
                         ),
                         child: Text(
                           user.rank!.toUpperCase(),
-                          style: Theme.of(ctx)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(
+                          style: Theme.of(ctx).textTheme.labelSmall?.copyWith(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.6,
@@ -236,8 +237,8 @@ class _UserTile extends ConsumerWidget {
     try {
       switch (action) {
         case 'set_rank':
-          final String? newRank = await _askText(
-              context, 'Укажите ранг (например, БОТ, VIP, ADMIN или пусто для сброса)',
+          final String? newRank = await _askText(context,
+              'Укажите ранг (например, БОТ, VIP, ADMIN или пусто для сброса)',
               initial: user.rank ?? '');
           if (newRank == null) return;
           await repo.setRank(userId: user.id, rank: newRank);
@@ -249,16 +250,17 @@ class _UserTile extends ConsumerWidget {
           break;
         case 'ban':
           final String? reason = await _askText(
-              context, 'Причина бана (необязательно)', initial: '');
-          await repo.setBanned(
-              userId: user.id, banned: true, reason: reason);
+              context, 'Причина бана (необязательно)',
+              initial: '');
+          await repo.setBanned(userId: user.id, banned: true, reason: reason);
           break;
         case 'unban':
           await repo.setBanned(userId: user.id, banned: false);
           break;
         case 'reset_password':
           final String? pwd = await _askText(
-              context, 'Новый пароль (мин. 6 символов)', initial: '');
+              context, 'Новый пароль (мин. 6 символов)',
+              initial: '');
           if (pwd == null || pwd.length < 6) return;
           await repo.resetPassword(userId: user.id, newPassword: pwd);
           if (context.mounted) {
@@ -285,8 +287,7 @@ class _UserTile extends ConsumerWidget {
                     child: const Text('Отмена')),
                 FilledButton(
                     onPressed: () => Navigator.pop(ctx, true),
-                    style: FilledButton.styleFrom(
-                        backgroundColor: Colors.red),
+                    style: FilledButton.styleFrom(backgroundColor: Colors.red),
                     child: const Text('Удалить')),
               ],
             ),
@@ -328,8 +329,7 @@ Future<String?> _askText(BuildContext context, String label,
       ),
       actions: <Widget>[
         TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Отмена')),
+            onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
         FilledButton(
             onPressed: () => Navigator.pop(ctx, c.text.trim()),
             child: const Text('OK')),

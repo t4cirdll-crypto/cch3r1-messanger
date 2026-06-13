@@ -214,13 +214,12 @@ class _ChatListEmpty extends StatelessWidget {
               height: 112,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: AppGradients.fromScheme(cs),
-                boxShadow: AppShadows.glow(cs.primary, opacity: 0.22),
+                color: cs.primaryContainer,
               ),
               child: Icon(
                 Icons.forum_outlined,
                 size: 56,
-                color: cs.onPrimary,
+                color: cs.onPrimaryContainer,
               ),
             ),
           ),

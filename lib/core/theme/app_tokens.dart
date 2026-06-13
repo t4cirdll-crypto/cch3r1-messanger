@@ -138,25 +138,3 @@ class AppShadows {
     ];
   }
 }
-
-/// Фирменные градиенты. Индиго-семя приложения раскрывается в мягкий диагональный
-/// градиент для аватаров-плейсхолдеров, акцентных кнопок и «брендовых» поверхностей.
-class AppGradients {
-  const AppGradients._();
-
-  /// Основной бренд-градиент (индиго → фиолетовый).
-  static const LinearGradient brand = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: <Color>[Color(0xFF6366F1), Color(0xFF8B5CF6)],
-  );
-
-  /// Градиент из пары цветов схемы — для динамических акцентов.
-  static LinearGradient fromScheme(ColorScheme scheme) {
-    return LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: <Color>[scheme.primary, scheme.secondary],
-    );
-  }
-}

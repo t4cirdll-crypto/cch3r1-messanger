@@ -24,19 +24,18 @@ class SplashScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              // Брендовая «печать»: индиго-градиент с мягким цветным свечением.
+              // Брендовая «печать»: тональная поверхность Material You.
               Container(
                 width: 88,
                 height: 88,
                 decoration: BoxDecoration(
-                  gradient: AppGradients.brand,
+                  color: scheme.primaryContainer,
                   borderRadius: AppRadius.xxlAll,
-                  boxShadow: AppShadows.glow(scheme.primary, opacity: 0.4),
                 ),
                 child: Icon(
                   Icons.bubble_chart_rounded,
                   size: 44,
-                  color: scheme.onPrimary,
+                  color: scheme.onPrimaryContainer,
                 ),
               ),
               const SizedBox(height: AppSpacing.xxxl),

@@ -279,7 +279,7 @@ class _SelectedChip extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: hasAvatar ? null : AppGradients.brand,
+                  color: hasAvatar ? null : theme.colorScheme.primaryContainer,
                   boxShadow: AppShadows.sm(theme.brightness),
                 ),
                 child: CircleAvatar(
@@ -299,7 +299,7 @@ class _SelectedChip extends StatelessWidget {
                                   .substring(0, 1)
                                   .toUpperCase(),
                           style: theme.textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
+                            color: theme.colorScheme.onPrimaryContainer,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

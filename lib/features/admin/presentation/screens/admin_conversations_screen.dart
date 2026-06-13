@@ -51,8 +51,7 @@ class AdminConversationsScreen extends ConsumerWidget {
             );
           }
           return RefreshIndicator(
-            onRefresh: () async =>
-                ref.invalidate(adminConversationsProvider),
+            onRefresh: () async => ref.invalidate(adminConversationsProvider),
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.lg,
@@ -67,8 +66,8 @@ class AdminConversationsScreen extends ConsumerWidget {
                     .map((AdminConversationMember m) =>
                         '@${m.username ?? m.userId.substring(0, 6)}')
                     .join(', ');
-                final String title = c.title ??
-                    (c.kind == 'saved' ? 'Saved Messages' : members);
+                final String title =
+                    c.title ?? (c.kind == 'saved' ? 'Saved Messages' : members);
                 return _ConversationTile(
                   conversation: c,
                   title: title,
@@ -130,8 +129,7 @@ class _ConversationTileState extends State<_ConversationTile> {
         color: Colors.transparent,
         child: InkWell(
           onTap: widget.onTap,
-          onHighlightChanged: (bool value) =>
-              setState(() => _pressed = value),
+          onHighlightChanged: (bool value) => setState(() => _pressed = value),
           borderRadius: AppRadius.lgAll,
           child: AnimatedContainer(
             duration: AppDurations.fast,
@@ -151,13 +149,12 @@ class _ConversationTileState extends State<_ConversationTile> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    gradient: AppGradients.fromScheme(scheme),
+                    color: scheme.primaryContainer,
                     borderRadius: AppRadius.mdAll,
-                    boxShadow: AppShadows.glow(scheme.primary, opacity: 0.22),
                   ),
                   child: Icon(
                     _kindIcon,
-                    color: scheme.onPrimary,
+                    color: scheme.onPrimaryContainer,
                     size: 22,
                   ),
                 ),
