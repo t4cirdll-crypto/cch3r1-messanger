@@ -94,15 +94,16 @@ class AdminMessagesScreen extends ConsumerWidget {
                       Container(
                         width: 40,
                         height: 40,
-                        decoration: const BoxDecoration(
-                          gradient: AppGradients.brand,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
                           borderRadius: AppRadius.mdAll,
                         ),
                         alignment: Alignment.center,
-                        child: const Icon(
+                        child: Icon(
                           Icons.person_outline,
                           size: 20,
-                          color: Colors.white,
+                          color:
+                              Theme.of(context).colorScheme.onPrimaryContainer,
                         ),
                       ),
                       const SizedBox(width: AppSpacing.md),

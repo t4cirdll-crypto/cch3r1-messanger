@@ -106,13 +106,13 @@ class ForwardPickerScreen extends ConsumerWidget {
     if (c.isSaved) {
       return ringed(
         DecoratedBox(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: AppGradients.brand,
+            color: scheme.primaryContainer,
           ),
-          child: Icon(Icons.bookmark, color: scheme.onPrimary, size: 20),
+          child:
+              Icon(Icons.bookmark, color: scheme.onPrimaryContainer, size: 20),
         ),
-        shadow: AppShadows.glow(scheme.primary, opacity: 0.3),
       );
     }
     if (c.isGroup) {
@@ -121,13 +121,13 @@ class ForwardPickerScreen extends ConsumerWidget {
         DecoratedBox(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: AppGradients.fromScheme(scheme),
+            color: scheme.primaryContainer,
           ),
           child: Center(
             child: Text(
               t.isEmpty ? '?' : t.substring(0, 1).toUpperCase(),
               style: theme.textTheme.titleMedium?.copyWith(
-                color: scheme.onPrimary,
+                color: scheme.onPrimaryContainer,
                 fontWeight: FontWeight.w600,
               ),
             ),

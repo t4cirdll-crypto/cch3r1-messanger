@@ -104,18 +104,16 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      // Прозрачный фон: под Navigator рисуется общий LiquidGlassBackground,
-      // и каждый экран «плывёт» поверх единой стеклянной подложки.
-      scaffoldBackgroundColor: Colors.transparent,
+      scaffoldBackgroundColor: scheme.surface,
       textTheme: tunedText,
       splashFactory: InkSparkle.splashFactory,
       visualDensity: VisualDensity.adaptivePlatformDensity,
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
         elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 3,
+        surfaceTintColor: scheme.surfaceTint,
         centerTitle: false,
         titleTextStyle: tunedText.titleLarge?.copyWith(fontSize: 20),
         systemOverlayStyle: isLight
@@ -132,10 +130,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: (isLight
-                ? scheme.surfaceContainerLowest
-                : scheme.surfaceContainerHigh)
-            .withValues(alpha: isLight ? 0.7 : 0.55),
+        fillColor: scheme.surfaceContainerHighest,
         border: OutlineInputBorder(
           borderRadius: AppRadius.mdAll,
           borderSide: BorderSide(
@@ -216,7 +211,7 @@ class AppTheme {
         elevation: 6,
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: scheme.surface.withValues(alpha: isLight ? 0.92 : 0.9),
+        backgroundColor: scheme.surfaceContainerLow,
         surfaceTintColor: Colors.transparent,
         modalBarrierColor: Colors.black.withValues(alpha: isLight ? 0.32 : 0.6),
         shape: const RoundedRectangleBorder(
@@ -227,8 +222,7 @@ class AppTheme {
         dragHandleColor: scheme.onSurfaceVariant.withValues(alpha: 0.4),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor:
-            scheme.surface.withValues(alpha: isLight ? 0.94 : 0.92),
+        backgroundColor: scheme.surfaceContainerHigh,
         surfaceTintColor: Colors.transparent,
         elevation: 8,
         shadowColor: Colors.black.withValues(alpha: isLight ? 0.2 : 0.5),
@@ -237,8 +231,7 @@ class AppTheme {
         ),
       ),
       popupMenuTheme: PopupMenuThemeData(
-        color:
-            scheme.surfaceContainerLow.withValues(alpha: isLight ? 0.95 : 0.92),
+        color: scheme.surfaceContainer,
         surfaceTintColor: Colors.transparent,
         elevation: 8,
         shape: const RoundedRectangleBorder(
@@ -251,10 +244,7 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: (isLight
-                ? scheme.surfaceContainerLowest
-                : scheme.surfaceContainerLow)
-            .withValues(alpha: isLight ? 0.7 : 0.6),
+        color: scheme.surfaceContainerHigh,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadius.lgAll,

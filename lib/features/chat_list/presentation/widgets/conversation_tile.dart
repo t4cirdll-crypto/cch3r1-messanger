@@ -126,7 +126,9 @@ class ConversationTile extends StatelessWidget {
               Icon(
                 last.isRead ? Icons.done_all : Icons.check,
                 size: 16,
-                color: last.isRead ? cs.primary : cs.onSurfaceVariant.withValues(alpha: 0.65),
+                color: last.isRead
+                    ? cs.primary
+                    : cs.onSurfaceVariant.withValues(alpha: 0.65),
               ),
               const SizedBox(width: AppSpacing.xs),
             ],
@@ -216,13 +218,13 @@ class _Avatar extends StatelessWidget {
         height: 52,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: AppGradients.fromScheme(theme.colorScheme),
-          boxShadow: AppShadows.glow(
-            theme.colorScheme.primary,
-            opacity: 0.28,
-          ),
+          color: theme.colorScheme.primaryContainer,
         ),
-        child: const Icon(Icons.bookmark, color: Colors.white, size: 24),
+        child: Icon(
+          Icons.bookmark,
+          color: theme.colorScheme.onPrimaryContainer,
+          size: 24,
+        ),
       );
     }
     if (conversation.isGroup) {

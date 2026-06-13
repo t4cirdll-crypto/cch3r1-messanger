@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -612,12 +610,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             horizontal: AppSpacing.lg,
                             vertical: AppSpacing.sm + AppSpacing.xxs,
                           ),
-                          fillColor: cs.surfaceContainerHighest.withValues(
-                            alpha:
-                                Theme.of(context).brightness == Brightness.light
-                                    ? 0.7
-                                    : 0.5,
-                          ),
+                          fillColor: cs.surfaceContainerHighest,
                         ),
                       ),
                     ),
@@ -629,21 +622,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           scale: _hasText ? 1 : 0.8,
                           duration: AppDurations.fast,
                           curve: AppCurves.spring,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              boxShadow:
-                                  AppShadows.glow(cs.primary, opacity: 0.35),
-                            ),
-                            child: CircleAvatar(
-                              radius: 22,
-                              backgroundColor: cs.primary,
-                              child: IconButton(
-                                tooltip: AppStrings.messageSend,
-                                onPressed: _uploading ? null : _send,
-                                icon: const Icon(Icons.send_rounded,
-                                    size: 18, color: Colors.white),
-                              ),
+                          child: CircleAvatar(
+                            radius: 22,
+                            backgroundColor: cs.primary,
+                            child: IconButton(
+                              tooltip: AppStrings.messageSend,
+                              onPressed: _uploading ? null : _send,
+                              icon: Icon(Icons.send_rounded,
+                                  size: 18, color: cs.onPrimary),
                             ),
                           ),
                         ),
@@ -1235,9 +1221,8 @@ class _ScrollToBottomFab extends StatelessWidget {
   }
 }
 
-/// Стеклянная панель композера: размытие фона + полупрозрачная заливка,
-/// световой блик сверху и тонкая «hairline» граница. Сообщения мягко
-/// просвечивают под строкой ввода.
+/// Панель композера Material You: тональная поверхность `surfaceContainer`
+/// с тонкой верхней разделительной линией. Без размытий и градиентов.
 class _GlassComposerBar extends StatelessWidget {
   const _GlassComposerBar({required this.child});
 
@@ -1246,38 +1231,22 @@ class _GlassComposerBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
-    final bool dark = Theme.of(context).brightness == Brightness.dark;
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: <Color>[
-                Color.alphaBlend(
-                  Colors.white.withValues(alpha: dark ? 0.06 : 0.28),
-                  cs.surface.withValues(alpha: dark ? 0.78 : 0.82),
-                ),
-                cs.surface.withValues(alpha: dark ? 0.78 : 0.84),
-              ],
-            ),
-            border: Border(
-              top: BorderSide(
-                color: cs.outlineVariant.withValues(alpha: 0.5),
-                width: 0.6,
-              ),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.xs,
-              vertical: AppSpacing.xs,
-            ),
-            child: child,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainer,
+        border: Border(
+          top: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: 0.5),
+            width: 0.6,
           ),
         ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xs,
+          vertical: AppSpacing.xs,
+        ),
+        child: child,
       ),
     );
   }
@@ -1304,13 +1273,12 @@ class _ChatEmptyState extends StatelessWidget {
               height: 96,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: AppGradients.brand,
-                boxShadow: AppShadows.glow(cs.primary, opacity: 0.28),
+                color: cs.primaryContainer,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.chat_bubble_outline_rounded,
                 size: 44,
-                color: Colors.white,
+                color: cs.onPrimaryContainer,
               ),
             ),
             const SizedBox(height: AppSpacing.xl),

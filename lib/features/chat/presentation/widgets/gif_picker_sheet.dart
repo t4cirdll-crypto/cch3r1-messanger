@@ -140,8 +140,7 @@ class _GifPickerViewState extends State<_GifPickerView> {
                   AppSpacing.sm,
                   AppSpacing.lg,
                 ),
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   mainAxisSpacing: AppSpacing.sm,
                   crossAxisSpacing: AppSpacing.sm,
@@ -204,10 +203,8 @@ class _GifTileState extends State<_GifTile> {
               child: CachedNetworkImage(
                 imageUrl: widget.gif.previewUrl,
                 fit: BoxFit.cover,
-                placeholder: (BuildContext c, _) => DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: AppGradients.fromScheme(scheme),
-                  ),
+                placeholder: (BuildContext c, _) => ColoredBox(
+                  color: scheme.surfaceContainerHighest,
                   child: const SizedBox.expand(),
                 ),
                 errorWidget: (BuildContext c, _, __) => ColoredBox(

@@ -41,9 +41,9 @@ class ReplyPreview extends StatelessWidget {
             width: 3,
             height: 36,
             decoration: BoxDecoration(
-              gradient: AppGradients.fromScheme(cs),
-              borderRadius: const BorderRadius.all(Radius.circular(AppRadius.xs)),
-              boxShadow: AppShadows.glow(cs.primary, opacity: 0.28),
+              color: cs.primary,
+              borderRadius:
+                  const BorderRadius.all(Radius.circular(AppRadius.xs)),
             ),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -79,26 +79,25 @@ class ReplyPreview extends StatelessWidget {
       ),
     );
   }
-
 }
 
 String previewMessageText(MessageEntity m) {
-    if (m.isDeleted) return AppStrings.messageDeleted;
-    if ((m.content ?? '').trim().isNotEmpty) return m.content!.trim();
-    if (m.attachmentKind != null) {
-      switch (m.attachmentKind!) {
-        case AttachmentKind.image:
-          return '🖼 Изображение';
-        case AttachmentKind.video:
-          return '🎬 Видео';
-        case AttachmentKind.voice:
-          return '🎤 Голосовое сообщение';
-        case AttachmentKind.file:
-          return '📎 ${m.attachmentName ?? "Файл"}';
-        case AttachmentKind.gif:
-          return '🎞 GIF';
-      }
+  if (m.isDeleted) return AppStrings.messageDeleted;
+  if ((m.content ?? '').trim().isNotEmpty) return m.content!.trim();
+  if (m.attachmentKind != null) {
+    switch (m.attachmentKind!) {
+      case AttachmentKind.image:
+        return '🖼 Изображение';
+      case AttachmentKind.video:
+        return '🎬 Видео';
+      case AttachmentKind.voice:
+        return '🎤 Голосовое сообщение';
+      case AttachmentKind.file:
+        return '📎 ${m.attachmentName ?? "Файл"}';
+      case AttachmentKind.gif:
+        return '🎞 GIF';
     }
+  }
   return '';
 }
 
