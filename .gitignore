@@ -1,24 +1,55 @@
+# Flutter / Dart
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
-*.freezed.dart
-*.g.dart
 .pub-cache/
-.tools/
+.pub/
 build/
+.fvm/
+pubspec.lock
+.tools/
 coverage/
-*.iml
+
+# IDEs
 .idea/
 .vscode/
-.DS_Store
+*.iml
+*.ipr
+*.iws
+
+# Android
+android/.gradle/
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/**/GeneratedPluginRegistrant.java
+android/key.properties
+*.jks
+*.keystore
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Runner/GeneratedPluginRegistrant.*
+
+# Generated files
+**/*.g.dart
+**/*.freezed.dart
+
+# Local configuration and sandbox state
 .env
 .env.*
 !.env.example
-*.keystore
-*.jks
-android/key.properties
 supabase/.temp/
 .hoplite/*
 !.hoplite/settings.json
+
+# macOS
+.DS_Store
+
+# Logs
 *.log
