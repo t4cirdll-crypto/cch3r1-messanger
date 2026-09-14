@@ -27,7 +27,8 @@ final FutureProvider<AuthLocalDataSource> authLocalDataSourceProvider =
 
 final FutureProvider<AuthRepository> authRepositoryProvider =
     FutureProvider<AuthRepository>((Ref ref) async {
-  final AuthLocalDataSource local = await ref.watch(authLocalDataSourceProvider.future);
+  final AuthLocalDataSource local =
+      await ref.watch(authLocalDataSourceProvider.future);
   return AuthRepositoryImpl(
     remote: ref.watch(authRemoteDataSourceProvider),
     local: local,
@@ -45,11 +46,13 @@ final FutureProvider<SignOut> signOutUseCaseProvider = FutureProvider<SignOut>(
 );
 final FutureProvider<CheckUsername> checkUsernameUseCaseProvider =
     FutureProvider<CheckUsername>(
-  (Ref ref) async => CheckUsername(await ref.watch(authRepositoryProvider.future)),
+  (Ref ref) async =>
+      CheckUsername(await ref.watch(authRepositoryProvider.future)),
 );
 final FutureProvider<GetCurrentProfile> getCurrentProfileUseCaseProvider =
     FutureProvider<GetCurrentProfile>(
-  (Ref ref) async => GetCurrentProfile(await ref.watch(authRepositoryProvider.future)),
+  (Ref ref) async =>
+      GetCurrentProfile(await ref.watch(authRepositoryProvider.future)),
 );
 
 /// Контроллер аутентификации. Держит текущий профиль как AsyncValue.
@@ -65,20 +68,21 @@ class AuthController extends AsyncNotifier<ProfileEntity?> {
     return uc.call(const NoParams());
   }
 
-  Future<void> signIn({required String username, required String password}) async {
-    state = const AsyncLoading<ProfileEntity?>();
-    state = await AsyncValue.guard(() async {
-      final SignIn uc = await ref.read(signInUseCaseProvider.future);
-      return uc.call(SignInParams(username: username, password: password));
-    });
+  Future<void> signIn(
+      {required String username, required String password}) async {
+    // The form owns progress/errors; auth loading is reserved for session startup.
+    final SignIn uc = await ref.read(signInUseCaseProvider.future);
+    final ProfileEntity profile =
+        await uc.call(SignInParams(username: username, password: password));
+    state = AsyncData<ProfileEntity?>(profile);
   }
 
-  Future<void> signUp({required String username, required String password}) async {
-    state = const AsyncLoading<ProfileEntity?>();
-    state = await AsyncValue.guard(() async {
-      final SignUp uc = await ref.read(signUpUseCaseProvider.future);
-      return uc.call(SignUpParams(username: username, password: password));
-    });
+  Future<void> signUp(
+      {required String username, required String password}) async {
+    final SignUp uc = await ref.read(signUpUseCaseProvider.future);
+    final ProfileEntity profile =
+        await uc.call(SignUpParams(username: username, password: password));
+    state = AsyncData<ProfileEntity?>(profile);
   }
 
   Future<void> signOut() async {
@@ -97,5 +101,6 @@ class AuthController extends AsyncNotifier<ProfileEntity?> {
   }
 }
 
-final AsyncNotifierProvider<AuthController, ProfileEntity?> authControllerProvider =
+final AsyncNotifierProvider<AuthController, ProfileEntity?>
+    authControllerProvider =
     AsyncNotifierProvider<AuthController, ProfileEntity?>(AuthController.new);

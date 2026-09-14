@@ -14,29 +14,47 @@ class ChatListLocalDataSource {
 
   static const int _cacheLimit = 50;
 
-  Future<List<ConversationEntity>> getCached() async {
+  Future<List<ConversationEntity>> getCached(String accountId) async {
     final List<Map<String, Object?>> rows = await _db.db.query(
       'conversations',
+      where: 'account_id = ?',
+      whereArgs: <Object>[accountId],
       orderBy: 'updated_at DESC',
       limit: _cacheLimit,
     );
-    return rows.map(_rowToEntity).toList();
+    return rows.map(ConversationCacheMapper.fromRow).toList();
   }
 
-  Future<void> cache(List<ConversationEntity> conversations) async {
+  Future<void> cache(
+    String accountId,
+    List<ConversationEntity> conversations,
+  ) async {
     final Batch batch = _db.db.batch();
-    batch.delete('conversations');
+    batch.delete(
+      'conversations',
+      where: 'account_id = ?',
+      whereArgs: <Object>[accountId],
+    );
     for (final ConversationEntity c in conversations.take(_cacheLimit)) {
       batch.insert(
         'conversations',
-        _entityToRow(c),
+        ConversationCacheMapper.toRow(accountId, c),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     }
     await batch.commit(noResult: true);
   }
+}
 
-  Map<String, Object?> _entityToRow(ConversationEntity c) => <String, Object?>{
+class ConversationCacheMapper {
+  const ConversationCacheMapper._();
+
+  static Map<String, Object?> toRow(
+    String accountId,
+    ConversationEntity c,
+  ) =>
+      <String, Object?>{
+        'account_id': accountId,
         'id': c.id,
         'kind': c.kind.value,
         'title': c.title,
@@ -55,13 +73,19 @@ class ChatListLocalDataSource {
             c.lastMessage == null ? null : (c.lastMessage!.isRead ? 1 : 0),
         'last_message_created_at':
             c.lastMessage?.createdAt.millisecondsSinceEpoch,
+        'last_message_deleted_at':
+            c.lastMessage?.deletedAt?.millisecondsSinceEpoch,
+        'last_message_expires_at':
+            c.lastMessage?.expiresAt?.millisecondsSinceEpoch,
+        'last_message_attachment_kind': c.lastMessage?.attachmentKind?.value,
+        'last_message_attachment_name': c.lastMessage?.attachmentName,
         'unread_count': c.unreadCount,
         'updated_at': c.updatedAt.millisecondsSinceEpoch,
         'muted': c.muted ? 1 : 0,
         'self_destruct_seconds': c.selfDestructSeconds,
       };
 
-  ConversationEntity _rowToEntity(Map<String, Object?> row) {
+  static ConversationEntity fromRow(Map<String, Object?> row) {
     final ConversationKind kind =
         ConversationKind.fromString(row['kind'] as String?);
     ProfileEntity? peer;
@@ -92,6 +116,11 @@ class ChatListLocalDataSource {
         createdAt: DateTime.fromMillisecondsSinceEpoch(
           row['last_message_created_at']! as int,
         ),
+        deletedAt: _dateFromRow(row['last_message_deleted_at']),
+        expiresAt: _dateFromRow(row['last_message_expires_at']),
+        attachmentKind: AttachmentKind.fromString(
+            row['last_message_attachment_kind'] as String?),
+        attachmentName: row['last_message_attachment_name'] as String?,
       );
     }
     return ConversationEntity(
@@ -103,11 +132,15 @@ class ChatListLocalDataSource {
       members: const <ConversationMember>[],
       lastMessage: last,
       unreadCount: (row['unread_count'] as int?) ?? 0,
-      updatedAt:
-          DateTime.fromMillisecondsSinceEpoch(row['updated_at']! as int),
+      updatedAt: DateTime.fromMillisecondsSinceEpoch(row['updated_at']! as int),
       muted: ((row['muted'] as int?) ?? 0) == 1,
-      selfDestructSeconds:
-          (row['self_destruct_seconds'] as int?) ?? 0,
+      selfDestructSeconds: (row['self_destruct_seconds'] as int?) ?? 0,
     );
+  }
+
+  static DateTime? _dateFromRow(Object? value) {
+    if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+    if (value is num) return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+    return null;
   }
 }

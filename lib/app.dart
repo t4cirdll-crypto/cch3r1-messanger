@@ -6,6 +6,7 @@ import 'config/routes.dart';
 import 'config/theme.dart';
 import 'core/constants/app_strings.dart';
 import 'core/providers/app_settings_providers.dart';
+import 'core/services/notifications_listener.dart';
 import 'core/widgets/presence_tracker.dart';
 
 class CchrMessangerApp extends ConsumerWidget {
@@ -13,6 +14,7 @@ class CchrMessangerApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(messageNotificationsListenerProvider);
     final router = ref.watch(routerProvider);
     final ThemeMode themeMode =
         ref.watch(themeModeControllerProvider).valueOrNull ?? ThemeMode.system;

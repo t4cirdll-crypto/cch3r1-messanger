@@ -34,11 +34,18 @@ ios/Pods/
 ios/.symlinks/
 ios/Flutter/Flutter.framework
 ios/Flutter/Flutter.podspec
+ios/Flutter/ephemeral/
 ios/Runner/GeneratedPluginRegistrant.*
 
 # Generated files
-**/*.g.dart
 **/*.freezed.dart
+**/*.g.dart
+
+# Hoplite runtime files (setup/run configuration is versioned)
+.hoplite/cache/
+.hoplite/logs/
+.hoplite/runtime/
+.hoplite/artifacts/
 
 # Local configuration and sandbox state
 .env
@@ -51,5 +58,8 @@ supabase/.temp/
 # macOS
 .DS_Store
 
-# Logs
+# Logs and local environment
 *.log
+.env
+.env.*
+!.env.example

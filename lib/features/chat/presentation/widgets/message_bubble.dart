@@ -443,12 +443,18 @@ class _SwipeToReplyState extends State<_SwipeToReply>
   static const double _maxOffset = 64;
   static const double _threshold = 56;
 
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: AppDurations.normal,
-  );
+  late final AnimationController _controller;
   double _drag = 0;
   bool _triggered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: AppDurations.normal,
+    );
+  }
 
   @override
   void dispose() {

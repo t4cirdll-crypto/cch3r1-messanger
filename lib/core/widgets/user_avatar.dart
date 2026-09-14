@@ -26,28 +26,28 @@ class UserAvatar extends StatelessWidget {
   final Color? backgroundColor;
   final Color? foregroundColor;
 
+  static const List<List<Color>> _palettes = <List<Color>>[
+    <Color>[Color(0xFF6366F1), Color(0xFF4F46E5)],
+    <Color>[Color(0xFFDB6E9A), Color(0xFFB54B7A)],
+    <Color>[Color(0xFF45A995), Color(0xFF278473)],
+    <Color>[Color(0xFFD29A52), Color(0xFFB17B37)],
+    <Color>[Color(0xFF5C93D8), Color(0xFF3F72B4)],
+    <Color>[Color(0xFF9B83CD), Color(0xFF795FB0)],
+    <Color>[Color(0xFF78A269), Color(0xFF527F43)],
+  ];
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final Color bg = backgroundColor ?? theme.colorScheme.primaryContainer;
     final Color fg = foregroundColor ?? theme.colorScheme.onPrimaryContainer;
     final double size = radius * 2;
-    // Deterministic gradients for beautiful placeholder avatars
     final int code = initial.isNotEmpty ? initial.codeUnitAt(0) : 0;
     final List<Color> gradientColors;
     if (backgroundColor != null) {
       gradientColors = [bg, bg];
     } else {
-      final List<List<Color>> palettes = [
-        [const Color(0xFF6366F1), const Color(0xFF4F46E5)],
-        [const Color(0xFFEC4899), const Color(0xFFD946EF)],
-        [const Color(0xFF14B8A6), const Color(0xFF0D9488)],
-        [const Color(0xFFF59E0B), const Color(0xFFD97706)],
-        [const Color(0xFF3B82F6), const Color(0xFF2563EB)],
-        [const Color(0xFF8B5CF6), const Color(0xFF7C3AED)],
-        [const Color(0xFF10B981), const Color(0xFF059669)],
-      ];
-      gradientColors = palettes[code % palettes.length];
+      gradientColors = _palettes[code % _palettes.length];
     }
     final Color textColor = backgroundColor != null ? fg : Colors.white;
 
@@ -66,7 +66,6 @@ class UserAvatar extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.12),
           width: 0.5,
         ),
-        boxShadow: AppShadows.sm(theme.brightness),
       ),
       child: Text(
         initial,
@@ -91,6 +90,7 @@ class UserAvatar extends StatelessWidget {
         height: size,
         child: CachedNetworkImage(
           imageUrl: url,
+          memCacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).ceil(),
           fit: BoxFit.cover,
           placeholder: (BuildContext _, __) => fallback,
           errorWidget: (BuildContext _, __, ___) => fallback,

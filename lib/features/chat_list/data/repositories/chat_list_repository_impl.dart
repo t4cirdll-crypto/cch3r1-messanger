@@ -25,64 +25,101 @@ class ChatListRepositoryImpl implements ChatListRepository {
     return u.id;
   }
 
+  bool _isCurrentAccount(String accountId) =>
+      client.auth.currentUser?.id == accountId;
+
+  void _ensureCurrentAccount(String accountId) {
+    if (!_isCurrentAccount(accountId)) {
+      throw const app.AuthException('Сессия изменилась');
+    }
+  }
+
   @override
   Future<List<ConversationEntity>> getConversations() async {
+    final String accountId = _uid;
     try {
-      final List<String> ids = await remote.getConversationIds(_uid);
+      _ensureCurrentAccount(accountId);
+      final List<String> ids = await remote.getConversationIds(accountId);
+      _ensureCurrentAccount(accountId);
       if (ids.isEmpty) {
-        await local.cache(<ConversationEntity>[]);
+        _ensureCurrentAccount(accountId);
+        await local.cache(accountId, <ConversationEntity>[]);
+        _ensureCurrentAccount(accountId);
         return <ConversationEntity>[];
       }
+      _ensureCurrentAccount(accountId);
       final List<ConversationModel> convs =
           await remote.getConversationsByIds(ids);
+      _ensureCurrentAccount(accountId);
       final List<ConversationMemberModel> members =
           await remote.getMembersForConversations(ids);
+      _ensureCurrentAccount(accountId);
 
       final Map<String, List<ConversationMemberModel>> byConv =
           <String, List<ConversationMemberModel>>{};
       DateTime? myLastRead(String convId) {
         for (final ConversationMemberModel m in byConv[convId] ?? const []) {
-          if (m.userId == _uid) return m.lastReadAt;
+          if (m.userId == accountId) return m.lastReadAt;
         }
         return null;
       }
 
       for (final ConversationMemberModel m in members) {
-        byConv.putIfAbsent(
-          m.conversationId,
-          () => <ConversationMemberModel>[],
-        ).add(m);
+        byConv
+            .putIfAbsent(
+              m.conversationId,
+              () => <ConversationMemberModel>[],
+            )
+            .add(m);
       }
 
       final Map<String, DateTime?> lastReadByConv = <String, DateTime?>{};
       for (final ConversationModel c in convs) {
         lastReadByConv[c.id] = myLastRead(c.id);
       }
+      _ensureCurrentAccount(accountId);
       final Map<String, int> unread = await remote.getUnreadCounts(
-        currentUserId: _uid,
+        currentUserId: accountId,
         lastReadByConversation: lastReadByConv,
       );
+      _ensureCurrentAccount(accountId);
 
       final List<ConversationEntity> entities = convs
           .map((ConversationModel c) => _toEntity(
                 c,
                 byConv[c.id] ?? const <ConversationMemberModel>[],
                 unread[c.id] ?? 0,
+                accountId: accountId,
               ))
           .toList();
-      await local.cache(entities);
+      _ensureCurrentAccount(accountId);
+      await local.cache(accountId, entities);
+      _ensureCurrentAccount(accountId);
       return entities;
+    } on app.AuthException {
+      rethrow;
     } catch (_) {
-      return local.getCached();
+      _ensureCurrentAccount(accountId);
+      final List<ConversationEntity> cached = await local.getCached(accountId);
+      _ensureCurrentAccount(accountId);
+      return cached;
     }
   }
 
   @override
   Future<ConversationEntity> createOrGetDm(String peerId) async {
-    final ConversationModel model = await remote.createOrGetDm(_uid, peerId);
+    final String accountId = _uid;
+    _ensureCurrentAccount(accountId);
+    final ConversationModel model =
+        await remote.createOrGetDm(accountId, peerId);
+    _ensureCurrentAccount(accountId);
     final List<ConversationMemberModel> members =
         await remote.getMembersForConversations(<String>[model.id]);
-    return _toEntity(model, members, 0);
+    _ensureCurrentAccount(accountId);
+    final ConversationEntity entity =
+        _toEntity(model, members, 0, accountId: accountId);
+    _ensureCurrentAccount(accountId);
+    return entity;
   }
 
   @override
@@ -90,23 +127,39 @@ class ChatListRepositoryImpl implements ChatListRepository {
     required String title,
     required List<String> memberIds,
   }) async {
+    final String accountId = _uid;
+    _ensureCurrentAccount(accountId);
     final String id = await remote.createGroup(
       title: title,
       memberIds: memberIds,
     );
+    _ensureCurrentAccount(accountId);
     final ConversationModel model = await remote.getConversationById(id);
+    _ensureCurrentAccount(accountId);
     final List<ConversationMemberModel> members =
         await remote.getMembersForConversations(<String>[id]);
-    return _toEntity(model, members, 0);
+    _ensureCurrentAccount(accountId);
+    final ConversationEntity entity =
+        _toEntity(model, members, 0, accountId: accountId);
+    _ensureCurrentAccount(accountId);
+    return entity;
   }
 
   @override
   Future<ConversationEntity> createOrGetSaved() async {
+    final String accountId = _uid;
+    _ensureCurrentAccount(accountId);
     final String id = await remote.createOrGetSaved();
+    _ensureCurrentAccount(accountId);
     final ConversationModel model = await remote.getConversationById(id);
+    _ensureCurrentAccount(accountId);
     final List<ConversationMemberModel> members =
         await remote.getMembersForConversations(<String>[id]);
-    return _toEntity(model, members, 0);
+    _ensureCurrentAccount(accountId);
+    final ConversationEntity entity =
+        _toEntity(model, members, 0, accountId: accountId);
+    _ensureCurrentAccount(accountId);
+    return entity;
   }
 
   @override
@@ -114,81 +167,126 @@ class ChatListRepositoryImpl implements ChatListRepository {
     required String conversationId,
     required String userId,
     String role = 'member',
-  }) =>
-      remote.addMember(
-        conversationId: conversationId,
-        userId: userId,
-        role: role,
-      );
+  }) async {
+    final String accountId = _uid;
+    _ensureCurrentAccount(accountId);
+    await remote.addMember(
+      conversationId: conversationId,
+      userId: userId,
+      role: role,
+    );
+    _ensureCurrentAccount(accountId);
+  }
 
   @override
   Future<void> removeMember({
     required String conversationId,
     required String userId,
-  }) =>
-      remote.removeMember(conversationId: conversationId, userId: userId);
+  }) async {
+    final String accountId = _uid;
+    _ensureCurrentAccount(accountId);
+    await remote.removeMember(conversationId: conversationId, userId: userId);
+    _ensureCurrentAccount(accountId);
+  }
 
   @override
   Future<void> changeRole({
     required String conversationId,
     required String userId,
     required String role,
-  }) =>
-      remote.changeRole(
-        conversationId: conversationId,
-        userId: userId,
-        role: role,
-      );
+  }) async {
+    final String accountId = _uid;
+    _ensureCurrentAccount(accountId);
+    await remote.changeRole(
+      conversationId: conversationId,
+      userId: userId,
+      role: role,
+    );
+    _ensureCurrentAccount(accountId);
+  }
 
   @override
   Future<void> setGroupTitle({
     required String conversationId,
     required String title,
-  }) =>
-      remote.setGroupTitle(conversationId: conversationId, title: title);
+  }) async {
+    final String accountId = _uid;
+    _ensureCurrentAccount(accountId);
+    await remote.setGroupTitle(conversationId: conversationId, title: title);
+    _ensureCurrentAccount(accountId);
+  }
 
   @override
   Future<void> setGroupAvatar({
     required String conversationId,
     required String? path,
-  }) =>
-      remote.setGroupAvatar(conversationId: conversationId, path: path);
+  }) async {
+    final String accountId = _uid;
+    _ensureCurrentAccount(accountId);
+    await remote.setGroupAvatar(conversationId: conversationId, path: path);
+    _ensureCurrentAccount(accountId);
+  }
 
   @override
-  Future<void> leaveConversation(String conversationId) =>
-      remote.removeMember(conversationId: conversationId, userId: _uid);
+  Future<void> leaveConversation(String conversationId) async {
+    final String accountId = _uid;
+    _ensureCurrentAccount(accountId);
+    await remote.removeMember(
+        conversationId: conversationId, userId: accountId);
+    _ensureCurrentAccount(accountId);
+  }
 
   @override
-  Future<void> markRead(String conversationId) =>
-      remote.markRead(conversationId);
+  Future<void> markRead(String conversationId) async {
+    final String accountId = _uid;
+    _ensureCurrentAccount(accountId);
+    await remote.markRead(conversationId);
+    _ensureCurrentAccount(accountId);
+  }
 
   @override
   Future<void> setSelfDestruct({
     required String conversationId,
     required int seconds,
-  }) =>
-      remote.setSelfDestruct(
-        conversationId: conversationId,
-        seconds: seconds,
-      );
+  }) async {
+    final String accountId = _uid;
+    _ensureCurrentAccount(accountId);
+    await remote.setSelfDestruct(
+      conversationId: conversationId,
+      seconds: seconds,
+    );
+    _ensureCurrentAccount(accountId);
+  }
 
   @override
   Future<void> setMute({
     required String conversationId,
     required DateTime? until,
-  }) =>
-      remote.setMute(conversationId: conversationId, until: until);
+  }) async {
+    final String accountId = _uid;
+    _ensureCurrentAccount(accountId);
+    await remote.setMute(conversationId: conversationId, until: until);
+    _ensureCurrentAccount(accountId);
+  }
 
   @override
-  Stream<void> watchConversationChanges() => remote.watchChanges(_uid);
+  Stream<void> watchConversationChanges() async* {
+    final String accountId = _uid;
+    if (!_isCurrentAccount(accountId)) return;
+    await for (final _ in remote.watchChanges(accountId)) {
+      if (!_isCurrentAccount(accountId)) return;
+      yield null;
+    }
+  }
 
   // ---------------------------------------------------------------------------
 
   ConversationEntity _toEntity(
     ConversationModel c,
     List<ConversationMemberModel> members,
-    int unread,
-  ) {
+    int unread, {
+    required String accountId,
+  }) {
     final ConversationKind kind = ConversationKind.fromString(c.kind);
     final List<ConversationMember> hydratedMembers = members
         .where((ConversationMemberModel m) => m.profile != null)
@@ -204,14 +302,14 @@ class ChatListRepositoryImpl implements ChatListRepository {
     ProfileEntity? peer;
     if (kind == ConversationKind.dm) {
       for (final ConversationMember m in hydratedMembers) {
-        if (m.profile.id != _uid) {
+        if (m.profile.id != accountId) {
           peer = m.profile;
           break;
         }
       }
       // Fallback на user1/user2 (на случай неполного embedding).
       if (peer == null) {
-        final String? otherId = c.user1Id == _uid ? c.user2Id : c.user1Id;
+        final String? otherId = c.user1Id == accountId ? c.user2Id : c.user1Id;
         if (otherId != null) {
           peer = ProfileEntity(id: otherId, username: '');
         }
@@ -219,14 +317,12 @@ class ChatListRepositoryImpl implements ChatListRepository {
     }
 
     final DateTime now = DateTime.now();
-    final ConversationMember? me = hydratedMembers
-        .cast<ConversationMember?>()
-        .firstWhere(
-          (ConversationMember? m) => m?.profile.id == _uid,
-          orElse: () => null,
-        );
-    final bool muted =
-        me?.mutedUntil != null && me!.mutedUntil!.isAfter(now);
+    final ConversationMember? me =
+        hydratedMembers.cast<ConversationMember?>().firstWhere(
+              (ConversationMember? m) => m?.profile.id == accountId,
+              orElse: () => null,
+            );
+    final bool muted = me?.mutedUntil != null && me!.mutedUntil!.isAfter(now);
 
     return ConversationEntity(
       id: c.id,
@@ -243,5 +339,3 @@ class ChatListRepositoryImpl implements ChatListRepository {
     );
   }
 }
-
-

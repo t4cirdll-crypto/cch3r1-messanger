@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,6 +46,10 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  late final StateController<String?> _activeConversation;
+  late final String? _draftAccountId;
+  Timer? _draftDebounce;
+  String _lastText = '';
   bool _hasText = false;
   bool _uploading = false;
   bool _showScrollToBottom = false;
@@ -58,28 +64,38 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    _activeConversation = ref.read(activeConversationIdProvider.notifier);
+    _draftAccountId = ref.read(currentUserIdProvider);
     _scrollController.addListener(_onScroll);
-    _controller.addListener(_onTextChanged);
 
     // Load draft if any
-    final String? draft = DraftsManager.getDraft(widget.conversationId);
+    final String? draft = DraftsManager.getDraft(widget.conversationId,
+        accountId: _draftAccountId);
     if (draft != null && draft.isNotEmpty) {
       _controller.text = draft;
       _controller.selection = TextSelection.collapsed(offset: draft.length);
       _hasText = true;
     }
+    _lastText = _controller.text;
+    _controller.addListener(_onTextChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      ref.read(activeConversationIdProvider.notifier).state =
-          widget.conversationId;
-      await ref
-          .read(chatControllerProvider(widget.conversationId).notifier)
-          .markAsRead();
+      if (!mounted) return;
+      _activeConversation.state = widget.conversationId;
+      try {
+        await ref
+            .read(chatControllerProvider(widget.conversationId).notifier)
+            .markAsRead();
+      } catch (error) {
+        debugPrint('markAsRead failed: $error');
+      }
     });
   }
 
   void _onTextChanged() {
     final String currentText = _controller.text;
+    if (currentText == _lastText) return;
+    _lastText = currentText;
     final bool nextHasText = currentText.trim().isNotEmpty;
     if (nextHasText != _hasText) {
       setState(() => _hasText = nextHasText);
@@ -89,9 +105,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       // ignore: discarded_futures
       ref.read(typingChannelProvider(widget.conversationId)).ping();
     }
-    // Save draft asynchronously
-    // ignore: discarded_futures
-    DraftsManager.saveDraft(widget.conversationId, currentText);
+    _draftDebounce?.cancel();
+    _draftDebounce = Timer(AppDurations.normal, () {
+      unawaited(DraftsManager.saveDraft(widget.conversationId, currentText,
+          accountId: _draftAccountId));
+    });
   }
 
   void _onScroll() {
@@ -120,13 +138,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
-    // Save draft on dispose to ensure it's up to date
-    DraftsManager.saveDraft(widget.conversationId, _controller.text);
+    _draftDebounce?.cancel();
+    unawaited(DraftsManager.saveDraft(widget.conversationId, _controller.text,
+        accountId: _draftAccountId));
 
-    final StateController<String?> ctrl =
-        ref.read(activeConversationIdProvider.notifier);
-    if (ctrl.state == widget.conversationId) {
-      ctrl.state = null;
+    if (_activeConversation.mounted &&
+        _activeConversation.state == widget.conversationId) {
+      _activeConversation.state = null;
     }
     _scrollController.dispose();
     _controller.dispose();

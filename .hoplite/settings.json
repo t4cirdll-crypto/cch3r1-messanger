@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "setup": "bash .hoplite/setup.sh",
+    "run": "bash .hoplite/run.sh"
+  },
+  "ports": {
+    "primary": 3000
+  }
+}

@@ -45,6 +45,8 @@ Future<void> main() async {
     try {
       await Supabase.initialize(
         url: SupabaseConfig.url,
+        // Keep compatibility with the declared supabase_flutter 2.5.x minimum.
+        // ignore: deprecated_member_use
         anonKey: SupabaseConfig.anonKey,
         debug: kDebugMode,
         httpClient: DynamicProxyHttpClient(),

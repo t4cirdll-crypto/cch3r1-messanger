@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../auth/domain/entities/profile_entity.dart';
 import '../../../chat/domain/entities/message_entity.dart';
 
@@ -122,11 +123,9 @@ class ConversationEntity {
       case ConversationKind.dm:
         return peer?.effectiveName ?? title ?? '—';
       case ConversationKind.group:
-        return (title?.trim().isNotEmpty ?? false)
-            ? title!.trim()
-            : 'Группа';
+        return (title?.trim().isNotEmpty ?? false) ? title!.trim() : 'Группа';
       case ConversationKind.saved:
-        return 'Saved Messages';
+        return AppStrings.savedMessages;
     }
   }
 
