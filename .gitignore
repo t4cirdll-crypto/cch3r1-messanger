@@ -7,6 +7,8 @@
 .pub/
 build/
 .fvm/
+pubspec.lock
+.tools/
 coverage/
 
 # IDEs
@@ -25,7 +27,7 @@ android/local.properties
 android/**/GeneratedPluginRegistrant.java
 android/key.properties
 *.jks
-android/app/*.keystore
+*.keystore
 
 # iOS
 ios/Pods/
@@ -44,6 +46,14 @@ ios/Runner/GeneratedPluginRegistrant.*
 .hoplite/logs/
 .hoplite/runtime/
 .hoplite/artifacts/
+
+# Local configuration and sandbox state
+.env
+.env.*
+!.env.example
+supabase/.temp/
+.hoplite/*
+!.hoplite/settings.json
 
 # macOS
 .DS_Store
