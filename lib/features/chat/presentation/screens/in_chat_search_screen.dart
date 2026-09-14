@@ -27,6 +27,7 @@ class _InChatSearchScreenState extends ConsumerState<InChatSearchScreen> {
   List<MessageEntity> _results = const <MessageEntity>[];
   bool _busy = false;
   Object? _error;
+  int _requestId = 0;
 
   @override
   void dispose() {
@@ -37,35 +38,38 @@ class _InChatSearchScreenState extends ConsumerState<InChatSearchScreen> {
 
   void _onChanged(String q) {
     _debounce?.cancel();
+    final int requestId = ++_requestId;
     final String trimmed = q.trim();
-    if (trimmed.isEmpty) {
-      setState(() {
-        _results = const <MessageEntity>[];
-        _error = null;
-      });
-      return;
-    }
-    _debounce = Timer(const Duration(milliseconds: 300), () => _run(trimmed));
+    setState(() {
+      _results = const <MessageEntity>[];
+      _error = null;
+      _busy = trimmed.isNotEmpty;
+    });
+    if (trimmed.isEmpty) return;
+    _debounce = Timer(
+      const Duration(milliseconds: 300),
+      () => _run(trimmed, requestId),
+    );
   }
 
-  Future<void> _run(String q) async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
+  bool _isCurrent(int requestId) => mounted && requestId == _requestId;
+
+  Future<void> _run(String q, int requestId) async {
+    if (!_isCurrent(requestId)) return;
     try {
       final ChatRepository repo = await ref.read(chatRepositoryProvider.future);
+      if (!_isCurrent(requestId)) return;
       final List<MessageEntity> list = await repo.searchInConversation(
         conversationId: widget.conversationId,
         query: q,
       );
-      if (!mounted) return;
+      if (!_isCurrent(requestId)) return;
       setState(() {
         _results = list;
         _busy = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!_isCurrent(requestId)) return;
       setState(() {
         _error = e;
         _busy = false;
@@ -80,6 +84,7 @@ class _InChatSearchScreenState extends ConsumerState<InChatSearchScreen> {
     return Scaffold(
       appBar: GlassmorphicAppBar(
         title: TextField(
+          key: const ValueKey<String>('message-search'),
           controller: _ctrl,
           autofocus: true,
           decoration: const InputDecoration(
@@ -95,6 +100,7 @@ class _InChatSearchScreenState extends ConsumerState<InChatSearchScreen> {
         actions: <Widget>[
           if (_ctrl.text.isNotEmpty)
             IconButton(
+              tooltip: AppStrings.clearSearch,
               icon: const Icon(Icons.clear),
               onPressed: () {
                 _ctrl.clear();

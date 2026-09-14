@@ -1,8 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/db/local_database.dart';
 import '../../../../core/providers/supabase_providers.dart';
-import '../../../../core/usecases/usecase.dart';
 import '../../data/datasources/chat_list_local_datasource.dart';
 import '../../data/datasources/chat_list_remote_datasource.dart';
 import '../../data/repositories/chat_list_repository_impl.dart';
@@ -47,100 +48,176 @@ final FutureProvider<CreateOrGetConversation>
   ),
 );
 
-/// Контроллер списка чатов + реактивный рефетч при Realtime-событиях.
 class ChatListController
-    extends AsyncNotifier<List<ConversationEntity>> {
+    extends AutoDisposeAsyncNotifier<List<ConversationEntity>> {
+  Object? _lifecycle;
+  String? _accountId;
+  bool _built = false;
+  bool _loadingInitial = false;
+  bool _dirty = false;
+  Timer? _debounce;
+  Future<void>? _refreshTask;
+
+  bool _isCurrent(Object lifecycle) =>
+      identical(_lifecycle, lifecycle) &&
+      ref.read(currentUserIdProvider) == _accountId;
+
   @override
   Future<List<ConversationEntity>> build() async {
-    // Реалтайм-триггер: любое изменение — рефетч списка.
-    ref.listen<AsyncValue<void>>(
-      _chatListChangesProvider,
-      (AsyncValue<void>? prev, AsyncValue<void> next) {
-        if (next.hasValue) {
-          refresh();
-        }
-      },
-    );
+    final String? accountId = ref.watch(currentUserIdProvider);
+    final bool changedAccount = _built && _accountId != accountId;
+    final Object lifecycle = Object();
+    _lifecycle = lifecycle;
+    _accountId = accountId;
+    _built = true;
+    _loadingInitial = true;
+    _dirty = false;
+    _refreshTask = null;
+    _debounce?.cancel();
+    _debounce = null;
+    ref.onDispose(() {
+      if (!identical(_lifecycle, lifecycle)) return;
+      _lifecycle = null;
+      _debounce?.cancel();
+      _debounce = null;
+      _refreshTask = null;
+    });
 
-    final GetConversations uc =
-        await ref.watch(getConversationsUseCaseProvider.future);
-    return uc.call(const NoParams());
+    if (changedAccount) {
+      state = const AsyncData<List<ConversationEntity>>([]);
+      state = const AsyncLoading<List<ConversationEntity>>();
+    }
+    if (accountId == null) {
+      _loadingInitial = false;
+      return const <ConversationEntity>[];
+    }
+
+    try {
+      final ChatListRepository repo =
+          await ref.watch(chatListRepositoryProvider.future);
+      if (!_isCurrent(lifecycle)) return const <ConversationEntity>[];
+      final StreamSubscription<void> subscription = repo
+          .watchConversationChanges()
+          .listen(
+            (_) => _scheduleRefresh(lifecycle),
+            onError: (Object _, StackTrace __) => _scheduleRefresh(lifecycle),
+          );
+      ref.onDispose(subscription.cancel);
+      final List<ConversationEntity> list = await repo.getConversations();
+      if (!_isCurrent(lifecycle)) return const <ConversationEntity>[];
+      _loadingInitial = false;
+      if (_dirty) _scheduleRefresh(lifecycle);
+      return list;
+    } catch (_) {
+      if (_isCurrent(lifecycle)) {
+        _loadingInitial = false;
+        if (_dirty) _scheduleRefresh(lifecycle);
+      }
+      rethrow;
+    }
   }
 
-  Future<void> refresh() async {
-    state = const AsyncLoading<List<ConversationEntity>>();
-    state = await AsyncValue.guard(() async {
-      final GetConversations uc =
-          await ref.read(getConversationsUseCaseProvider.future);
-      return uc.call(const NoParams());
+  void _scheduleRefresh(Object lifecycle) {
+    if (!_isCurrent(lifecycle)) return;
+    _dirty = true;
+    if (_loadingInitial || _refreshTask != null) return;
+    _debounce ??= Timer(const Duration(milliseconds: 250), () {
+      _debounce = null;
+      if (_isCurrent(lifecycle)) unawaited(refresh());
     });
+  }
+
+  Future<void> refresh() {
+    final Object? lifecycle = _lifecycle;
+    if (lifecycle == null || _accountId == null || !_isCurrent(lifecycle)) {
+      return Future<void>.value();
+    }
+    _debounce?.cancel();
+    _debounce = null;
+    if (_refreshTask != null) return _refreshTask!;
+    _dirty = true;
+    if (_loadingInitial) return _refreshAfterInitial(lifecycle);
+    return _refreshTask = _drainRefreshes(lifecycle);
+  }
+
+  Future<void> _refreshAfterInitial(Object lifecycle) async {
+    try {
+      await future;
+    } catch (_) {
+      // Explicit retry should also recover from an initial load failure.
+    }
+    if (_isCurrent(lifecycle)) await refresh();
+  }
+
+  Future<void> _drainRefreshes(Object lifecycle) async {
+    try {
+      while (_isCurrent(lifecycle) && _dirty) {
+        _dirty = false;
+        final AsyncValue<List<ConversationEntity>> previous = state;
+        state = const AsyncLoading<List<ConversationEntity>>()
+            .copyWithPrevious(previous);
+        try {
+          final ChatListRepository repo =
+              await ref.read(chatListRepositoryProvider.future);
+          if (!_isCurrent(lifecycle)) return;
+          final List<ConversationEntity> list = await repo.getConversations();
+          if (!_isCurrent(lifecycle)) return;
+          state = AsyncData<List<ConversationEntity>>(list);
+        } catch (error, stackTrace) {
+          if (!_isCurrent(lifecycle)) return;
+          state = AsyncError<List<ConversationEntity>>(error, stackTrace)
+              .copyWithPrevious(previous);
+        }
+        // An event during the request gets one trailing fetch, never a parallel one.
+      }
+    } finally {
+      if (identical(_lifecycle, lifecycle)) _refreshTask = null;
+    }
+  }
+
+  Future<T> _mutate<T>(Future<T> Function(ChatListRepository) action,
+      {bool reload = true}) async {
+    final Object? lifecycle = _lifecycle;
+    if (lifecycle == null || _accountId == null || !_isCurrent(lifecycle)) {
+      throw StateError('Нет активной сессии');
+    }
+    final link = ref.keepAlive();
+    try {
+      final ChatListRepository repo =
+          await ref.read(chatListRepositoryProvider.future);
+      if (!_isCurrent(lifecycle)) throw StateError('Сессия изменилась');
+      final T result = await action(repo);
+      if (!_isCurrent(lifecycle)) throw StateError('Сессия изменилась');
+      if (reload) await refresh();
+      if (!_isCurrent(lifecycle)) throw StateError('Сессия изменилась');
+      return result;
+    } finally {
+      link.close();
+    }
   }
 
   Future<ConversationEntity> createGroup({
     required String title,
     required List<String> memberIds,
-  }) async {
-    final ChatListRepository repo =
-        await ref.read(chatListRepositoryProvider.future);
-    final ConversationEntity created = await repo.createGroup(
-      title: title,
-      memberIds: memberIds,
-    );
-    await refresh();
-    return created;
-  }
+  }) =>
+      _mutate((repo) => repo.createGroup(title: title, memberIds: memberIds));
 
-  Future<ConversationEntity> openSaved() async {
-    final ChatListRepository repo =
-        await ref.read(chatListRepositoryProvider.future);
-    final ConversationEntity saved = await repo.createOrGetSaved();
-    await refresh();
-    return saved;
-  }
+  Future<ConversationEntity> openSaved() =>
+      _mutate((repo) => repo.createOrGetSaved());
 
-  Future<void> markRead(String conversationId) async {
-    final ChatListRepository repo =
-        await ref.read(chatListRepositoryProvider.future);
-    await repo.markRead(conversationId);
-  }
+  Future<void> markRead(String conversationId) =>
+      _mutate((repo) => repo.markRead(conversationId), reload: false);
 
-  Future<void> setSelfDestruct({
-    required String conversationId,
-    required int seconds,
-  }) async {
-    final ChatListRepository repo =
-        await ref.read(chatListRepositoryProvider.future);
-    await repo.setSelfDestruct(
-      conversationId: conversationId,
-      seconds: seconds,
-    );
-    await refresh();
-  }
+  Future<void> setSelfDestruct(
+          {required String conversationId, required int seconds}) =>
+      _mutate((repo) => repo.setSelfDestruct(
+          conversationId: conversationId, seconds: seconds));
 
-  Future<void> setMute({
-    required String conversationId,
-    required DateTime? until,
-  }) async {
-    final ChatListRepository repo =
-        await ref.read(chatListRepositoryProvider.future);
-    await repo.setMute(conversationId: conversationId, until: until);
-    await refresh();
-  }
+  Future<void> setMute(
+          {required String conversationId, required DateTime? until}) =>
+      _mutate(
+          (repo) => repo.setMute(conversationId: conversationId, until: until));
 }
 
-final AsyncNotifierProvider<ChatListController, List<ConversationEntity>>
-    chatListControllerProvider =
-    AsyncNotifierProvider<ChatListController, List<ConversationEntity>>(
-  ChatListController.new,
-);
-
-/// Стрим Realtime-изменений; авто-отписка через Riverpod.
-final AutoDisposeStreamProvider<void> _chatListChangesProvider =
-    StreamProvider.autoDispose<void>((Ref ref) async* {
-  final ChatListRepository repo =
-      await ref.watch(chatListRepositoryProvider.future);
-  final Stream<void> stream = repo.watchConversationChanges();
-  await for (final _ in stream) {
-    yield null;
-  }
-});
+final chatListControllerProvider = AsyncNotifierProvider.autoDispose<
+    ChatListController, List<ConversationEntity>>(ChatListController.new);

@@ -17,13 +17,15 @@ final StateProvider<String?> activeConversationIdProvider =
 
 /// Фоновый слушатель INSERT-ов в `messages`. Опирается на RLS для фильтрации:
 /// realtime присылает только те сообщения, к которым у юзера есть SELECT-доступ.
-final Provider<MessageNotificationsListener> messageNotificationsListenerProvider =
-    Provider<MessageNotificationsListener>((Ref ref) {
+final AutoDisposeProvider<void> messageNotificationsListenerProvider =
+    Provider.autoDispose<void>((Ref ref) {
+  final String? userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return;
   final SupabaseClient client = ref.watch(supabaseClientProvider);
   final MessageNotificationsListener listener =
       MessageNotificationsListener(client: client, ref: ref);
   ref.onDispose(listener.dispose);
-  return listener;
+  listener.start();
 });
 
 class MessageNotificationsListener {
@@ -53,6 +55,7 @@ class MessageNotificationsListener {
   }
 
   void _onInsert(PostgresChangePayload payload) {
+    if (!_started) return;
     final Map<String, dynamic> row = payload.newRecord;
     final String? convId = row['conversation_id'] as String?;
     final String? senderId = row['sender_id'] as String?;
@@ -110,8 +113,8 @@ class MessageNotificationsListener {
 
   Future<void> dispose() async {
     final RealtimeChannel? c = _channel;
-    if (c != null) await _client.removeChannel(c);
     _channel = null;
     _started = false;
+    if (c != null) await _client.removeChannel(c);
   }
 }

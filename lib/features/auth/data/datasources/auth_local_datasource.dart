@@ -9,28 +9,30 @@ class AuthLocalDataSource {
 
   final LocalDatabase _db;
 
-  Future<void> cacheProfile(ProfileModel profile) async {
+  Future<void> cacheProfile(String accountId, ProfileModel profile) async {
+    final Map<String, Object?> row = <String, Object?>{
+      'account_id': accountId,
+      ...profile.toDb(),
+    };
     await _db.db.insert(
       'profiles',
-      profile.toDb(),
+      row,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
-  Future<ProfileModel?> getProfile(String id) async {
+  Future<ProfileModel?> getProfile(String accountId, String id) async {
     final List<Map<String, Object?>> rows = await _db.db.query(
       'profiles',
-      where: 'id = ?',
-      whereArgs: <Object>[id],
+      where: 'account_id = ? AND id = ?',
+      whereArgs: <Object>[accountId, id],
       limit: 1,
     );
     if (rows.isEmpty) return null;
     return ProfileModel.fromDb(rows.first);
   }
 
-  Future<void> clear() async {
-    await _db.db.delete('profiles');
-    await _db.db.delete('conversations');
-    await _db.db.delete('messages');
+  Future<void> clear(String accountId) async {
+    await _db.clearCachedData(accountId);
   }
 }

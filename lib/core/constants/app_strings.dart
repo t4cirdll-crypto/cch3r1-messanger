@@ -31,7 +31,8 @@ class AppStrings {
   static const String errorUsernameTaken = 'Этот ник уже занят';
   static const String errorUsernameFormat =
       'Ник: 3–20 символов, латиница, цифры, подчёркивание';
-  static const String errorPasswordShort = 'Пароль должен быть не короче 6 символов';
+  static const String errorPasswordShort =
+      'Пароль должен быть не короче 6 символов';
   static const String errorPasswordsMismatch = 'Пароли не совпадают';
   static const String errorUsernameRequired = 'Укажите ник';
   static const String errorPasswordRequired = 'Укажите пароль';
@@ -41,8 +42,30 @@ class AppStrings {
 
   // Список чатов
   static const String chatsTitle = 'Чаты';
-  static const String chatsEmpty = 'Нет диалогов. Начните переписку через поиск 🔍';
+  static const String chatsEmpty = 'Ваши разговоры начнутся здесь';
   static const String newChat = 'Новый чат';
+  static const String newGroup = 'Новая группа';
+  static const String savedMessages = 'Избранное';
+  static const String inboxTitle = 'Сообщения';
+  static const String inboxSubtitle = 'Ближе к тем, кто важен';
+  static const String inboxSearchHint = 'Поиск по имени или нику';
+  static const String clearSearch = 'Очистить поиск';
+  static const String allChats = 'Все';
+  static const String unreadChats = 'Непрочитанные';
+  static const String groupChats = 'Группы';
+  static const String resetFilters = 'Сбросить фильтры';
+  static const String inboxNoResults = 'Таких диалогов пока нет';
+  static const String inboxNoResultsHint =
+      'Попробуйте другое имя или выберите все чаты.';
+  static const String inboxEmptyHint =
+      'Найдите друга по нику или создайте группу, чтобы быть на связи.';
+  static const String inboxLoadError = 'Не удалось загрузить диалоги';
+  static const String inboxRefreshError =
+      'Не удалось обновить. Показаны сохранённые диалоги.';
+  static const String inboxOfflineHint =
+      'Нет подключения. Сохранённые диалоги доступны.';
+  static const String noMessagesYet = 'Пока нет сообщений';
+  static const String messageExpired = 'Сообщение исчезло';
 
   // Поиск
   static const String searchTitle = 'Поиск пользователей';

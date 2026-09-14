@@ -36,6 +36,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _checkUsername() async {
+    if (_checking || _busy) return;
     final String value = _username.text;
     if (!UsernameMapper.isValid(value)) {
       _snack(AppStrings.errorUsernameFormat);
@@ -45,6 +46,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     try {
       final bool available =
           await ref.read(authControllerProvider.notifier).checkUsername(value);
+      if (!mounted || _username.text != value) return;
       setState(() => _usernameAvailable = available);
       _snack(
         available
@@ -52,6 +54,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             : AppStrings.errorUsernameTaken,
       );
     } catch (e) {
+      if (!mounted || _username.text != value) return;
       _snack('${AppStrings.somethingWentWrong}: $e');
     } finally {
       if (mounted) setState(() => _checking = false);
@@ -59,6 +62,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _submit() async {
+    if (_busy) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _busy = true);
     try {

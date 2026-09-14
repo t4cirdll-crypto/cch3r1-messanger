@@ -126,11 +126,12 @@ class ChatState {
 }
 
 /// Контроллер экрана чата: загрузка, пагинация, отправка, Realtime.
-class ChatController extends FamilyAsyncNotifier<ChatState, String> {
+class ChatController extends AutoDisposeFamilyAsyncNotifier<ChatState, String> {
   static const int _pageSize = 30;
 
-  Timer? _expirySweepTimer;
-  Timer? _expiryUiTickTimer;
+  Object? _lifecycle;
+  // Сохраняется между rebuild, чтобы сразу очистить данные прошлого аккаунта.
+  String? _currentUserId;
 
   /// Сообщения, прилетевшие через realtime до того, как `build()`
   /// успел вернуть начальную страницу. Без буфера такие события
@@ -140,64 +141,102 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
   final List<MessageEntity> _pendingIncoming = <MessageEntity>[];
   bool _initialLoadComplete = false;
 
+  bool _isCurrent(Object lifecycle) => identical(_lifecycle, lifecycle);
+
+  bool _hasCurrentUser(Object lifecycle) {
+    if (!_isCurrent(lifecycle)) return false;
+    final String? userId = _currentUserId;
+    return userId != null && ref.read(currentUserIdProvider) == userId;
+  }
+
+  bool _canUseLoadedState(Object lifecycle) =>
+      _hasCurrentUser(lifecycle) && _initialLoadComplete;
+
   @override
   Future<ChatState> build(String conversationId) async {
+    final String? userId = ref.watch(currentUserIdProvider);
+    final String? previousUserId = _currentUserId;
+    final bool changedAccount =
+        previousUserId != null && previousUserId != userId;
+    final Object lifecycle = Object();
+    _lifecycle = lifecycle;
+    _currentUserId = userId;
     _pendingIncoming.clear();
     _initialLoadComplete = false;
     ref.onDispose(() {
+      if (!_isCurrent(lifecycle)) return;
+      _lifecycle = null;
       _pendingIncoming.clear();
       _initialLoadComplete = false;
     });
 
-    final ObserveMessages observe =
-        await ref.watch(observeMessagesUseCaseProvider.future);
+    if (changedAccount) {
+      // Сначала убираем previous AsyncValue, затем возвращаем экран в loading.
+      state = const AsyncData<ChatState>(ChatState(hasMore: false));
+      state = const AsyncLoading<ChatState>();
+    }
+
+    // При logout не запрашиваем и не сохраняем сообщения прошлого аккаунта.
+    if (userId == null) return const ChatState(hasMore: false);
+
+    // Захватываем зависимости до await, чтобы старый build не трогал
+    // disposed Ref.
+    final Future<ObserveMessages> observeFuture =
+        ref.watch(observeMessagesUseCaseProvider.future);
+    final Future<ChatRepository> repoFuture =
+        ref.watch(chatRepositoryProvider.future);
+    final Future<GetMessages> getMessagesFuture =
+        ref.watch(getMessagesUseCaseProvider.future);
+
+    final ObserveMessages observe = await observeFuture;
+    if (!_hasCurrentUser(lifecycle)) return const ChatState();
     final stream = observe.call(conversationId);
-    final sub = stream.listen(_onIncoming);
+    final sub = stream.listen(
+      (MessageEntity message) => _onIncoming(message, lifecycle),
+    );
     ref.onDispose(sub.cancel);
 
-    final ChatRepository repo =
-        await ref.watch(chatRepositoryProvider.future);
+    final ChatRepository repo = await repoFuture;
+    if (!_hasCurrentUser(lifecycle)) return const ChatState();
     final reactionSub =
-        repo.watchReactions().listen(_onReactionDelta);
+        repo.watchReactions().listen(
+      (ReactionDelta delta) => _onReactionDelta(delta, lifecycle),
+    );
     ref.onDispose(reactionSub.cancel);
 
     // Подписка на физическое удаление сообщений (sweep исчезающих).
     final deleteSub = repo
         .watchMessageDeletes(conversationId)
-        .listen(_onMessageDeleted);
+        .listen((String id) => _onMessageDeleted(id, lifecycle));
     ref.onDispose(deleteSub.cancel);
 
     // Серверный sweep: тикаем каждые 15 секунд, пока чат открыт, чтобы
     // исчезающие сообщения удалялись без ожидания минутного pg_cron.
-    _expirySweepTimer = Timer.periodic(
+    final Timer expirySweepTimer = Timer.periodic(
       const Duration(seconds: 15),
       (_) {
+        if (!_hasCurrentUser(lifecycle)) return;
         // ignore: discarded_futures
         repo.sweepExpiredMessages();
       },
     );
-    ref.onDispose(() {
-      _expirySweepTimer?.cancel();
-      _expirySweepTimer = null;
-    });
+    ref.onDispose(expirySweepTimer.cancel);
 
     // UI-тик: раз в секунду пересобираем стейт, если есть истёкшие сообщения,
     // которых сервер ещё не успел удалить — клиент моментально скрывает их
     // через геттер isExpired.
-    _expiryUiTickTimer = Timer.periodic(
+    final Timer expiryUiTickTimer = Timer.periodic(
       const Duration(seconds: 1),
-      (_) => _maybeTickExpiry(),
+      (_) => _maybeTickExpiry(lifecycle),
     );
-    ref.onDispose(() {
-      _expiryUiTickTimer?.cancel();
-      _expiryUiTickTimer = null;
-    });
+    ref.onDispose(expiryUiTickTimer.cancel);
 
-    final GetMessages uc =
-        await ref.watch(getMessagesUseCaseProvider.future);
+    final GetMessages uc = await getMessagesFuture;
+    if (!_hasCurrentUser(lifecycle)) return const ChatState();
     final List<MessageEntity> page = await uc.call(
       GetMessagesParams(conversationId: conversationId, limit: _pageSize),
     );
+    if (!_hasCurrentUser(lifecycle)) return const ChatState();
     final List<MessageEntity> sorted = page.reversed.toList();
 
     // Сливаем буфер realtime-сообщений, накопившийся пока шёл fetch первой
@@ -232,6 +271,7 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
     MessageEntity prev,
     MessageEntity incoming,
   ) {
+    if (incoming.isDeleted) return incoming;
     return incoming.copyWith(
       replyTo: incoming.replyTo ?? prev.replyTo,
       reactions: incoming.reactions.isEmpty
@@ -240,7 +280,8 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
     );
   }
 
-  void _onMessageDeleted(String id) {
+  void _onMessageDeleted(String id, Object lifecycle) {
+    if (!_hasCurrentUser(lifecycle)) return;
     final ChatState? current = state.valueOrNull;
     if (current == null) return;
     final List<MessageEntity> next = current.messages
@@ -250,7 +291,8 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
     state = AsyncData<ChatState>(current.copyWith(messages: next));
   }
 
-  void _maybeTickExpiry() {
+  void _maybeTickExpiry(Object lifecycle) {
+    if (!_hasCurrentUser(lifecycle)) return;
     final ChatState? current = state.valueOrNull;
     if (current == null) return;
     final DateTime now = DateTime.now();
@@ -263,7 +305,8 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
     state = AsyncData<ChatState>(current.copyWith());
   }
 
-  void _onIncoming(MessageEntity message) {
+  void _onIncoming(MessageEntity message, Object lifecycle) {
+    if (!_hasCurrentUser(lifecycle)) return;
     final ChatState? current = state.valueOrNull;
     if (current == null || !_initialLoadComplete) {
       // Initial fetch ещё не завершился — буферизуем, чтобы потом смержить
@@ -299,7 +342,8 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
     }
   }
 
-  void _onReactionDelta(ReactionDelta delta) {
+  void _onReactionDelta(ReactionDelta delta, Object lifecycle) {
+    if (!_hasCurrentUser(lifecycle)) return;
     final ChatState? current = state.valueOrNull;
     if (current == null) return;
     final int idx = current.messages.indexWhere(
@@ -317,9 +361,9 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
     List<ReactionEntity> current,
     ReactionDelta delta,
   ) {
-    final List<ReactionEntity> out =
-        List<ReactionEntity>.of(current.map((ReactionEntity r) =>
-            ReactionEntity(emoji: r.emoji, userIds: List<String>.of(r.userIds))));
+    final List<ReactionEntity> out = List<ReactionEntity>.of(current.map(
+        (ReactionEntity r) => ReactionEntity(
+            emoji: r.emoji, userIds: List<String>.of(r.userIds))));
     final int i = out.indexWhere((ReactionEntity r) => r.emoji == delta.emoji);
     if (delta.added) {
       if (i >= 0) {
@@ -346,7 +390,28 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
     return out;
   }
 
+  static List<MessageEntity> _mergePages(
+    Iterable<MessageEntity> older,
+    Iterable<MessageEntity> current,
+  ) {
+    final Map<String, MessageEntity> byId = <String, MessageEntity>{};
+    for (final MessageEntity message in older) {
+      byId[message.id] = message;
+    }
+    for (final MessageEntity message in current) {
+      final MessageEntity? previous = byId[message.id];
+      byId[message.id] =
+          previous == null ? message : _mergeIncoming(previous, message);
+    }
+    final List<MessageEntity> merged = byId.values.toList()
+      ..sort((MessageEntity a, MessageEntity b) =>
+          a.createdAt.compareTo(b.createdAt));
+    return merged;
+  }
+
   Future<void> loadMore() async {
+    final Object? lifecycle = _lifecycle;
+    if (lifecycle == null || !_canUseLoadedState(lifecycle)) return;
     final ChatState? current = state.valueOrNull;
     if (current == null) return;
     if (current.isLoadingMore || !current.hasMore) return;
@@ -354,8 +419,8 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
 
     state = AsyncData<ChatState>(current.copyWith(isLoadingMore: true));
     try {
-      final GetMessages uc =
-          await ref.read(getMessagesUseCaseProvider.future);
+      final GetMessages uc = await ref.read(getMessagesUseCaseProvider.future);
+      if (!_canUseLoadedState(lifecycle)) return;
       final List<MessageEntity> older = await uc.call(
         GetMessagesParams(
           conversationId: arg,
@@ -363,20 +428,24 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
           limit: _pageSize,
         ),
       );
-      final List<MessageEntity> merged = <MessageEntity>[
-        ...older.reversed,
-        ...current.messages,
-      ];
+      if (!_hasCurrentUser(lifecycle)) return;
+      final ChatState? latest = state.valueOrNull;
+      if (latest == null) return;
+      final List<MessageEntity> merged =
+          _mergePages(older.reversed, latest.messages);
       state = AsyncData<ChatState>(
-        current.copyWith(
+        latest.copyWith(
           messages: merged,
           isLoadingMore: false,
           hasMore: older.length == _pageSize,
         ),
       );
     } catch (e) {
+      if (!_hasCurrentUser(lifecycle)) return;
+      final ChatState? latest = state.valueOrNull;
+      if (latest == null) return;
       state = AsyncData<ChatState>(
-        current.copyWith(isLoadingMore: false, error: e),
+        latest.copyWith(isLoadingMore: false, error: e),
       );
     }
   }
@@ -409,11 +478,15 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
     String? forwardedFromMessageId,
     String? forwardedFromSenderId,
   }) async {
-    final ChatState? current = state.valueOrNull;
-    if (current == null) return;
+    final Object? lifecycle = _lifecycle;
+    if (lifecycle == null ||
+        !_canUseLoadedState(lifecycle) ||
+        state.valueOrNull == null) {
+      throw StateError('Чат ещё загружается. Повторите попытку.');
+    }
     try {
-      final SendMessage uc =
-          await ref.read(sendMessageUseCaseProvider.future);
+      final SendMessage uc = await ref.read(sendMessageUseCaseProvider.future);
+      if (!_canUseLoadedState(lifecycle)) return;
       final MessageEntity sent = await uc.call(
         SendMessageParams(
           conversationId: arg,
@@ -424,71 +497,100 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
           forwardedFromSenderId: forwardedFromSenderId,
         ),
       );
-      final List<MessageEntity> next = List<MessageEntity>.of(current.messages);
+      if (!_hasCurrentUser(lifecycle)) return;
+      final ChatState? latest = state.valueOrNull;
+      if (latest == null) return;
+      final List<MessageEntity> next = List<MessageEntity>.of(latest.messages);
       if (next.every((MessageEntity m) => m.id != sent.id)) {
         next.add(sent);
+        next.sort((MessageEntity a, MessageEntity b) =>
+            a.createdAt.compareTo(b.createdAt));
       }
       state = AsyncData<ChatState>(
-        current.copyWith(messages: next, clearError: true),
+        latest.copyWith(messages: next, clearError: true),
       );
     } catch (e) {
-      // Не глотаем ошибку — UI должен показать toast и вернуть текст в инпут.
+      // Ошибку текущего аккаунта не глотаем — UI вернёт текст в инпут.
       // Параллельно сохраняем последнюю ошибку в state для возможной баннер-
       // диагностики, но обязательно прокидываем дальше.
-      state = AsyncData<ChatState>(current.copyWith(error: e));
+      if (!_hasCurrentUser(lifecycle)) return;
+      final ChatState? latest = state.valueOrNull;
+      if (latest != null) {
+        state = AsyncData<ChatState>(latest.copyWith(error: e));
+      }
       rethrow;
     }
   }
 
   Future<void> editMessage(String messageId, String newContent) async {
-    final ChatState? current = state.valueOrNull;
-    if (current == null) return;
-    final ChatRepository repo =
-        await ref.read(chatRepositoryProvider.future);
+    final Object? lifecycle = _lifecycle;
+    if (lifecycle == null ||
+        !_canUseLoadedState(lifecycle) ||
+        state.valueOrNull == null) {
+      return;
+    }
+    final ChatRepository repo = await ref.read(chatRepositoryProvider.future);
+    if (!_canUseLoadedState(lifecycle)) return;
     await repo.editMessage(messageId: messageId, content: newContent);
-    final int i = current.messages.indexWhere(
+    if (!_hasCurrentUser(lifecycle)) return;
+    final ChatState? latest = state.valueOrNull;
+    if (latest == null) return;
+    final int i = latest.messages.indexWhere(
       (MessageEntity m) => m.id == messageId,
     );
-    if (i < 0) return;
-    final List<MessageEntity> next = List<MessageEntity>.of(current.messages);
+    if (i < 0 || latest.messages[i].isDeleted) return;
+    final List<MessageEntity> next = List<MessageEntity>.of(latest.messages);
     next[i] = next[i].copyWith(
       content: newContent.trim(),
       editedAt: DateTime.now(),
     );
-    state = AsyncData<ChatState>(current.copyWith(messages: next));
+    state = AsyncData<ChatState>(latest.copyWith(messages: next));
   }
 
-  Future<void> deleteMessage(String messageId,
-      {required bool forAll}) async {
-    final ChatState? current = state.valueOrNull;
-    if (current == null) return;
-    final ChatRepository repo =
-        await ref.read(chatRepositoryProvider.future);
+  Future<void> deleteMessage(String messageId, {required bool forAll}) async {
+    final Object? lifecycle = _lifecycle;
+    if (lifecycle == null ||
+        !_canUseLoadedState(lifecycle) ||
+        state.valueOrNull == null) {
+      return;
+    }
+    final ChatRepository repo = await ref.read(chatRepositoryProvider.future);
+    if (!_canUseLoadedState(lifecycle)) return;
     if (forAll) {
       await repo.deleteForAll(messageId);
-      final int i = current.messages.indexWhere(
+      if (!_hasCurrentUser(lifecycle)) return;
+      final ChatState? latest = state.valueOrNull;
+      if (latest == null) return;
+      final int i = latest.messages.indexWhere(
         (MessageEntity m) => m.id == messageId,
       );
       if (i < 0) return;
-      final List<MessageEntity> next = List<MessageEntity>.of(current.messages);
+      final List<MessageEntity> next = List<MessageEntity>.of(latest.messages);
       next[i] = next[i].copyWith(
-        content: null,
+        content: '',
         deletedAt: DateTime.now(),
         clearEditedAt: true,
+        clearReplyToId: true,
+        clearReplyTo: true,
         clearAttachment: true,
         reactions: const <ReactionEntity>[],
       );
-      state = AsyncData<ChatState>(current.copyWith(messages: next));
+      state = AsyncData<ChatState>(latest.copyWith(messages: next));
     } else {
       await repo.deleteForMe(messageId);
-      final List<MessageEntity> next = current.messages
+      if (!_hasCurrentUser(lifecycle)) return;
+      final ChatState? latest = state.valueOrNull;
+      if (latest == null) return;
+      final List<MessageEntity> next = latest.messages
           .where((MessageEntity m) => m.id != messageId)
           .toList();
-      state = AsyncData<ChatState>(current.copyWith(messages: next));
+      state = AsyncData<ChatState>(latest.copyWith(messages: next));
     }
   }
 
   Future<void> togglePin(String messageId) async {
+    final Object? lifecycle = _lifecycle;
+    if (lifecycle == null || !_canUseLoadedState(lifecycle)) return;
     final ChatState? current = state.valueOrNull;
     if (current == null) return;
     final int i = current.messages.indexWhere(
@@ -496,15 +598,22 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
     );
     if (i < 0) return;
     final bool nextPinned = !current.messages[i].isPinned;
-    final ChatRepository repo =
-        await ref.read(chatRepositoryProvider.future);
+    final ChatRepository repo = await ref.read(chatRepositoryProvider.future);
+    if (!_canUseLoadedState(lifecycle)) return;
     await repo.setPin(messageId: messageId, pinned: nextPinned);
-    final List<MessageEntity> next = List<MessageEntity>.of(current.messages);
-    next[i] = next[i].copyWith(
+    if (!_hasCurrentUser(lifecycle)) return;
+    final ChatState? latest = state.valueOrNull;
+    if (latest == null) return;
+    final int latestIndex = latest.messages.indexWhere(
+      (MessageEntity m) => m.id == messageId,
+    );
+    if (latestIndex < 0) return;
+    final List<MessageEntity> next = List<MessageEntity>.of(latest.messages);
+    next[latestIndex] = next[latestIndex].copyWith(
       pinnedAt: nextPinned ? DateTime.now() : null,
       clearPinnedAt: !nextPinned,
     );
-    state = AsyncData<ChatState>(current.copyWith(messages: next));
+    state = AsyncData<ChatState>(latest.copyWith(messages: next));
     // Refetch the canonical pinned list — закреплённые сообщения могут
     // оказаться вне текущей страницы, поэтому баннер не должен полагаться
     // только на `state.messages`.
@@ -512,8 +621,10 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
   }
 
   Future<void> toggleReaction(String messageId, String emoji) async {
-    final ChatRepository repo =
-        await ref.read(chatRepositoryProvider.future);
+    final Object? lifecycle = _lifecycle;
+    if (lifecycle == null || !_canUseLoadedState(lifecycle)) return;
+    final ChatRepository repo = await ref.read(chatRepositoryProvider.future);
+    if (!_canUseLoadedState(lifecycle)) return;
     await repo.toggleReaction(messageId: messageId, emoji: emoji);
   }
 
@@ -521,8 +632,10 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
     required MessageEntity message,
     required String targetConversationId,
   }) async {
-    final SendMessage uc =
-        await ref.read(sendMessageUseCaseProvider.future);
+    final Object? lifecycle = _lifecycle;
+    if (lifecycle == null || !_canUseLoadedState(lifecycle)) return;
+    final SendMessage uc = await ref.read(sendMessageUseCaseProvider.future);
+    if (!_canUseLoadedState(lifecycle)) return;
     OutgoingAttachment? attachment; // переслать вложение нельзя без re-upload —
     // в рамках Phase 1 пересылаем только текст; вложение помечаем в content.
     String? content = message.content;
@@ -539,14 +652,16 @@ class ChatController extends FamilyAsyncNotifier<ChatState, String> {
   }
 
   Future<void> markAsRead() async {
+    final Object? lifecycle = _lifecycle;
+    if (lifecycle == null || !_hasCurrentUser(lifecycle)) return;
     final MarkAsRead uc = await ref.read(markAsReadUseCaseProvider.future);
+    if (!_hasCurrentUser(lifecycle)) return;
     await uc.call(arg);
   }
 }
 
-final AsyncNotifierProviderFamily<ChatController, ChatState, String>
-    chatControllerProvider =
-    AsyncNotifierProvider.family<ChatController, ChatState, String>(
+final chatControllerProvider =
+    AsyncNotifierProvider.autoDispose.family<ChatController, ChatState, String>(
   ChatController.new,
 );
 
@@ -556,14 +671,22 @@ final AsyncNotifierProviderFamily<ChatController, ChatState, String>
 /// может оказаться значительно старше первой страницы и в `state.messages`
 /// его не будет. Поэтому тянем отдельным запросом через
 /// `getPinnedMessages` и инвалидaция вызывается из `togglePin`.
-final FutureProviderFamily<List<MessageEntity>, String>
-    pinnedMessagesProvider =
-    FutureProvider.family<List<MessageEntity>, String>(
+final pinnedMessagesProvider =
+    FutureProvider.autoDispose.family<List<MessageEntity>, String>(
   (Ref ref, String conversationId) async {
-    final ChatRepository repo =
-        await ref.watch(chatRepositoryProvider.future);
+    final String? userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return <MessageEntity>[];
+    var disposed = false;
+    ref.onDispose(() => disposed = true);
+    final ChatRepository repo = await ref.watch(chatRepositoryProvider.future);
+    if (disposed || ref.read(currentUserIdProvider) != userId) {
+      return <MessageEntity>[];
+    }
     final List<MessageEntity> list =
         await repo.getPinnedMessages(conversationId);
+    if (disposed || ref.read(currentUserIdProvider) != userId) {
+      return <MessageEntity>[];
+    }
     list.sort((MessageEntity a, MessageEntity b) =>
         (a.pinnedAt ?? a.createdAt).compareTo(b.pinnedAt ?? b.createdAt));
     return list;

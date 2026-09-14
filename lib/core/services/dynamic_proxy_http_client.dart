@@ -21,7 +21,7 @@ class DynamicProxyHttpClient extends http.BaseClient {
     }
 
     final HttpClient innerClient = HttpClient();
-    
+
     // Таймауты для более надежного соединения в плохих условиях сети
     innerClient.connectionTimeout = const Duration(seconds: 15);
 
@@ -33,9 +33,6 @@ class DynamicProxyHttpClient extends http.BaseClient {
           return 'PROXY $host:$port';
         }
       };
-      
-      // Игнорируем ошибки самоподписанных сертификатов при отладке / через прокси
-      innerClient.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
     }
 
     _lastProxyConfig = configString;

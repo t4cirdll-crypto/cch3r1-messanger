@@ -31,6 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    if (_busy) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _busy = true);
     try {
@@ -136,6 +137,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           labelText: AppStrings.passwordLabel,
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
+                            tooltip:
+                                _obscure ? 'Показать пароль' : 'Скрыть пароль',
                             onPressed: () =>
                                 setState(() => _obscure = !_obscure),
                             icon: Icon(

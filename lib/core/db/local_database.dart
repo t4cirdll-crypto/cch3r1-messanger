@@ -10,7 +10,9 @@ class LocalDatabase {
   final Database _db;
   Database get db => _db;
 
-  static const int _version = 8;
+  // v9 scopes every cache row to the signed-in account. Cache data is not
+  // durable user content, so the upgrade deliberately drops legacy rows.
+  static const int _version = 9;
   static const String _dbName = 'cchr_messanger.db';
 
   static Future<LocalDatabase> open() async {
@@ -21,6 +23,22 @@ class LocalDatabase {
       version: _version,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+    );
+    return LocalDatabase._(db);
+  }
+
+  /// Opens the schema with an injected factory for SQLite-backed tests.
+  static Future<LocalDatabase> openForTesting(
+    DatabaseFactory factory, {
+    String path = inMemoryDatabasePath,
+  }) async {
+    final Database db = await factory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: _version,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      ),
     );
     return LocalDatabase._(db);
   }
@@ -154,17 +172,34 @@ class LocalDatabase {
     }
     if (oldVersion < 8) {
       try {
-        await db.execute('ALTER TABLE conversations ADD COLUMN peer_rank TEXT;');
+        await db
+            .execute('ALTER TABLE conversations ADD COLUMN peer_rank TEXT;');
       } on DatabaseException {
         // Уже добавлена.
       }
     }
+    if (oldVersion < 9) {
+      await _dropCacheTables(db);
+      await _createAccountScopedCacheTables(db);
+    }
   }
 
   static Future<void> _onCreate(Database db, int version) async {
+    await _createAccountScopedCacheTables(db);
+  }
+
+  static Future<void> _dropCacheTables(Database db) async {
+    await db.execute('DROP TABLE IF EXISTS message_reactions;');
+    await db.execute('DROP TABLE IF EXISTS messages;');
+    await db.execute('DROP TABLE IF EXISTS conversations;');
+    await db.execute('DROP TABLE IF EXISTS profiles;');
+  }
+
+  static Future<void> _createAccountScopedCacheTables(Database db) async {
     await db.execute('''
       CREATE TABLE profiles (
-        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL,
+        id TEXT NOT NULL,
         username TEXT NOT NULL,
         display_name TEXT,
         bio TEXT,
@@ -172,12 +207,14 @@ class LocalDatabase {
         is_online INTEGER NOT NULL DEFAULT 0,
         last_seen INTEGER,
         created_at INTEGER,
-        rank TEXT
+        rank TEXT,
+        PRIMARY KEY (account_id, id)
       );
     ''');
     await db.execute('''
       CREATE TABLE conversations (
-        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL,
+        id TEXT NOT NULL,
         kind TEXT NOT NULL DEFAULT 'dm',
         title TEXT,
         avatar_path TEXT,
@@ -193,15 +230,21 @@ class LocalDatabase {
         last_message_sender_id TEXT,
         last_message_is_read INTEGER,
         last_message_created_at INTEGER,
+        last_message_deleted_at INTEGER,
+        last_message_expires_at INTEGER,
+        last_message_attachment_kind TEXT,
+        last_message_attachment_name TEXT,
         unread_count INTEGER NOT NULL DEFAULT 0,
         updated_at INTEGER NOT NULL,
         muted INTEGER NOT NULL DEFAULT 0,
-        self_destruct_seconds INTEGER NOT NULL DEFAULT 0
+        self_destruct_seconds INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (account_id, id)
       );
     ''');
     await db.execute('''
       CREATE TABLE messages (
-        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL,
+        id TEXT NOT NULL,
         conversation_id TEXT NOT NULL,
         sender_id TEXT NOT NULL,
         content TEXT,
@@ -221,30 +264,44 @@ class LocalDatabase {
         attachment_duration_ms INTEGER,
         attachment_width INTEGER,
         attachment_height INTEGER,
-        expires_at INTEGER
+        expires_at INTEGER,
+        PRIMARY KEY (account_id, id)
       );
     ''');
     await db.execute('''
       CREATE TABLE message_reactions (
+        account_id TEXT NOT NULL,
         message_id TEXT NOT NULL,
         user_id TEXT NOT NULL,
         emoji TEXT NOT NULL,
         created_at INTEGER,
-        PRIMARY KEY (message_id, user_id, emoji)
+        PRIMARY KEY (account_id, message_id, user_id, emoji)
       );
     ''');
     await db.execute(
-      'CREATE INDEX idx_reactions_message '
-      'ON message_reactions (message_id);',
+      'CREATE INDEX idx_reactions_account_message '
+      'ON message_reactions (account_id, message_id);',
     );
     await db.execute(
-      'CREATE INDEX idx_messages_conv_created '
-      'ON messages (conversation_id, created_at DESC);',
+      'CREATE INDEX idx_messages_account_conv_created '
+      'ON messages (account_id, conversation_id, created_at DESC);',
     );
     await db.execute(
-      'CREATE INDEX idx_conversations_updated '
-      'ON conversations (updated_at DESC);',
+      'CREATE INDEX idx_conversations_account_updated '
+      'ON conversations (account_id, updated_at DESC);',
     );
+  }
+
+  /// Clears one account's cache without affecting a newly active account.
+  Future<void> clearCachedData(String accountId) async {
+    await _db.transaction((Transaction txn) async {
+      const String where = 'account_id = ?';
+      final List<Object> whereArgs = <Object>[accountId];
+      await txn.delete('message_reactions', where: where, whereArgs: whereArgs);
+      await txn.delete('messages', where: where, whereArgs: whereArgs);
+      await txn.delete('conversations', where: where, whereArgs: whereArgs);
+      await txn.delete('profiles', where: where, whereArgs: whereArgs);
+    });
   }
 
   Future<void> close() => _db.close();

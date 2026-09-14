@@ -11,6 +11,7 @@ class ChatListSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
     return Shimmer.fromColors(
+      enabled: !MediaQuery.disableAnimationsOf(context),
       baseColor: scheme.surfaceContainerHighest,
       highlightColor: scheme.surfaceContainerHigh,
       child: ListView.builder(
