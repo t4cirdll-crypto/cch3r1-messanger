@@ -154,6 +154,7 @@ void main() {
     container.read(_accountProvider.notifier).state = null;
     await tester.pump();
     expect(container.read(chatListControllerProvider).valueOrNull, isEmpty);
+    await tester.pumpAndSettle();
   });
 
   testWidgets('dispose cancels scheduled realtime refreshes', (tester) async {
