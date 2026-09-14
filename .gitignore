@@ -8,6 +8,8 @@
 build/
 .fvm/
 pubspec.lock
+.tools/
+coverage/
 
 # IDEs
 .idea/
@@ -25,6 +27,7 @@ android/local.properties
 android/**/GeneratedPluginRegistrant.java
 android/key.properties
 *.jks
+*.keystore
 
 # iOS
 ios/Pods/
@@ -36,6 +39,14 @@ ios/Runner/GeneratedPluginRegistrant.*
 # Generated files
 **/*.g.dart
 **/*.freezed.dart
+
+# Local configuration and sandbox state
+.env
+.env.*
+!.env.example
+supabase/.temp/
+.hoplite/*
+!.hoplite/settings.json
 
 # macOS
 .DS_Store
